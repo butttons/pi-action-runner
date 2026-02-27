@@ -46,12 +46,6 @@ async function run(): Promise<void> {
       pull_number: payload.issue.number,
     });
 
-    await octokit.rest.reactions.createForIssueComment({
-      ...context.repo,
-      comment_id: payload.comment.id,
-      content: 'eyes',
-    });
-
     const workingDir = process.env.GITHUB_WORKSPACE ?? process.cwd();
     const model = core.getInput('pi_model') || 'anthropic/claude-opus-4-6';
     const extraPrompt = core.getInput('extra_prompt') || '';

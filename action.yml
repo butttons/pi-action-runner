@@ -34,6 +34,17 @@ inputs:
 runs:
   using: 'composite'
   steps:
+    - name: React to comment
+      if: github.event_name == 'issue_comment'
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+      run: |
+        gh api \
+          --method POST \
+          /repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions \
+          -f content='eyes'
+
     - name: Setup Bun
       uses: oven-sh/setup-bun@v2
 
