@@ -1,9 +1,3 @@
-/**
- * Review output template.
- *
- * Pi's response must conform to this structure. The prompt enforces it.
- * We wrap it with metadata for the posted comment.
- */
 export function wrapReviewComment({
   body,
   model,
@@ -17,32 +11,29 @@ export function wrapReviewComment({
     body,
     '',
     '---',
-    `<sub>Reviewed by pi (${model}) | PR #${prNumber}</sub>`,
+    `<sub>pi (${model}) | PR #${prNumber}</sub>`,
   ].join('\n');
 }
 
-/**
- * The structured output format pi must produce.
- * Embedded in the prompt as the required output shape.
- */
 export const REVIEW_OUTPUT_FORMAT = `## Review
 
 ### Summary
-<!-- One short paragraph: what does this PR do and why. -->
+<!-- One sentence: what this PR does. -->
 
-### Risk Assessment
-<!-- Format: **[LOW | MEDIUM | HIGH]** -- one sentence justification. -->
+### Risk
+<!-- **LOW** | **MEDIUM** | **HIGH** -- one sentence why. -->
 
 ### Issues
-<!-- Bulleted list. Each item:
-- **[critical | warning | nit]** \`file:line\` -- description
-If none, write "No issues found." -->
+<!-- Each item is one line:
+- **critical** \`file.ts:42\` -- description
+- **warning** \`file.ts:17\` -- description
+- **nit** \`file.ts:5\` -- description
+Write "None." if clean. -->
 
 ### Suggestions
-<!-- Bulleted list. Each item:
-- \`file\` -- suggestion
-If none, write "No suggestions." -->
+<!-- Each item is one line:
+- \`file.ts\` -- suggestion
+Write "None." if nothing worth suggesting. -->
 
 ### Architecture
-<!-- Only include if the PR changes structure, patterns, or cross-cutting concerns.
-One short paragraph. Omit this section entirely if not applicable. -->`;
+<!-- One sentence if the PR changes structure or cross-cutting patterns. Omit entirely if not applicable. -->`;
