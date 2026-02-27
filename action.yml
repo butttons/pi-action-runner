@@ -57,16 +57,11 @@ runs:
     - name: Install dora
       shell: bash
       run: |
-        ARCH=$([ "$(uname -m)" = "aarch64" ] && echo "arm64" || echo "x64")
-        VERSION="${{ inputs.dora_version }}"
-        if [ "$VERSION" = "latest" ]; then
-          URL="https://github.com/butttons/dora/releases/latest/download/dora-linux-${ARCH}"
+        if [ "${{ inputs.dora_version }}" = "latest" ]; then
+          bun add -g @butttons/dora
         else
-          URL="https://github.com/butttons/dora/releases/download/${VERSION}/dora-linux-${ARCH}"
+          bun add -g @butttons/dora@${{ inputs.dora_version }}
         fi
-        echo "Downloading dora from ${URL}"
-        curl -fsSL "$URL" -o /usr/local/bin/dora
-        chmod +x /usr/local/bin/dora
         dora --version
 
     - name: Install SCIP indexer

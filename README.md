@@ -130,7 +130,7 @@ Reviews follow a fixed structure:
 
 - GitHub Actions runner: `ubuntu-latest`
 - Repository secret: `PI_AUTH` (base64 pi auth.json)
-- The action installs its own dependencies (bun, dora, scip-typescript).
+- The action installs its own dependencies (bun, dora via `@butttons/dora`, scip-typescript).
 
 ## License
 
