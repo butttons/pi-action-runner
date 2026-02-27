@@ -1,0 +1,95 @@
+name: 'Pi Code Review'
+description: 'AI-powered PR review using pi coding agent and dora code intelligence'
+author: 'butttons'
+
+inputs:
+  pi_auth:
+    description: 'Base64-encoded pi auth.json'
+    required: true
+  pi_model:
+    description: 'Model to use for review (provider/model format)'
+    required: false
+    default: 'anthropic/claude-opus-4-6'
+  dora_version:
+    description: 'Dora CLI version (latest or specific tag)'
+    required: false
+    default: 'latest'
+  scip_install:
+    description: 'Command to install the SCIP indexer. Set to empty string to skip.'
+    required: false
+    default: 'bun install -g @sourcegraph/scip-typescript'
+  dora_pre_index:
+    description: 'Commands to run after dora init but before dora index (e.g. install project deps)'
+    required: false
+    default: ''
+  dora_index_command:
+    description: 'Override the dora index command'
+    required: false
+    default: 'dora index'
+  extra_prompt:
+    description: 'Additional instructions to append to review prompt'
+    required: false
+    default: ''
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Bun
+      uses: oven-sh/setup-bun@v2
+
+    - name: Install action dependencies
+      shell: bash
+      run: |
+        cd ${{ github.action_path }}
+        bun install --frozen-lockfile
+
+    - name: Install dora
+      shell: bash
+      run: |
+        ARCH=$([ "$(uname -m)" = "aarch64" ] && echo "arm64" || echo "x64")
+        VERSION="${{ inputs.dora_version }}"
+        if [ "$VERSION" = "latest" ]; then
+          URL="https://github.com/butttons/dora/releases/latest/download/dora-linux-${ARCH}"
+        else
+          URL="https://github.com/butttons/dora/releases/download/${VERSION}/dora-linux-${ARCH}"
+        fi
+        echo "Downloading dora from ${URL}"
+        curl -fsSL "$URL" -o /usr/local/bin/dora
+        chmod +x /usr/local/bin/dora
+        dora --version
+
+    - name: Install SCIP indexer
+      if: inputs.scip_install != ''
+      shell: bash
+      run: ${{ inputs.scip_install }}
+
+    - name: Setup pi auth
+      shell: bash
+      run: |
+        mkdir -p ~/.pi/agent
+        echo "${{ inputs.pi_auth }}" | base64 -d > ~/.pi/agent/auth.json
+        chmod 600 ~/.pi/agent/auth.json
+
+    - name: Initialize dora
+      shell: bash
+      run: dora init
+
+    - name: Pre-index setup
+      if: inputs.dora_pre_index != ''
+      shell: bash
+      run: ${{ inputs.dora_pre_index }}
+
+    - name: Build dora index
+      shell: bash
+      run: |
+        ${{ inputs.dora_index_command }}
+        dora status
+
+    - name: Run pi review
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+        INPUT_PI_AUTH: ${{ inputs.pi_auth }}
+        INPUT_PI_MODEL: ${{ inputs.pi_model }}
+        INPUT_EXTRA_PROMPT: ${{ inputs.extra_prompt }}
+      run: bun run ${{ github.action_path }}/src/index.ts

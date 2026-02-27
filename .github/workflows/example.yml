@@ -1,0 +1,25 @@
+name: Pi Review
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  review:
+    if: github.event.issue.pull_request && startsWith(github.event.comment.body, '@pi ')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: refs/pull/${{ github.event.issue.number }}/merge
+
+      - uses: butttons/pi-action-runner@v0
+        with:
+          pi_auth: ${{ secrets.PI_AUTH }}
+          # pi_model: 'anthropic/claude-opus-4-6'
+          # dora_version: 'latest'
+          # extra_prompt: 'Focus on error handling'
