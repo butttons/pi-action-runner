@@ -1,6 +1,6 @@
 # pi-action-runner
 
-GitHub Action that runs AI-powered PR reviews using [pi](https://github.com/badlogic/pi-mono) and [dora](https://github.com/butttons/dora).
+GitHub Action that runs AI-powered PR reviews using [pi](https://github.com/badlogic/pi-mono) and optionally [dora](https://github.com/butttons/dora) for code intelligence.
 
 Comment `@pi review` on a PR to trigger a structured code review posted as a reply.
 
@@ -62,15 +62,20 @@ Only repository owners and members can trigger reviews.
 |---|---|---|---|
 | `pi_auth` | Yes | -- | Base64-encoded pi `auth.json` |
 | `pi_model` | No | `anthropic/claude-opus-4-6` | Model in `provider/model-id` format |
+| `use_dora` | No | `true` | Enable dora code intelligence. Set to `false` to skip dora entirely. |
 | `dora_version` | No | `latest` | Dora CLI release version |
 | `scip_install` | No | `bun install -g @sourcegraph/scip-typescript` | SCIP indexer install command. Empty string to skip. |
 | `dora_pre_index` | No | -- | Commands to run after `dora init` but before indexing (e.g. install project deps) |
 | `dora_index_command` | No | `dora index` | Override the index command |
 | `extra_prompt` | No | -- | Additional instructions appended to every review |
 
-### Language examples
+The `dora_version`, `scip_install`, `dora_pre_index`, and `dora_index_command` inputs are ignored when `use_dora` is `false`.
 
-**TypeScript/JavaScript** (default, no config needed):
+## Examples
+
+### With dora (default)
+
+**TypeScript/JavaScript** (no extra config needed):
 
 ```yaml
 - uses: butttons/pi-action-runner@v0
@@ -97,7 +102,7 @@ Only repository owners and members can trigger reviews.
     dora_pre_index: 'pip install -e .'
 ```
 
-**No SCIP indexer** (dora still provides file-level analysis):
+**Skip the SCIP indexer** (dora still provides file-level analysis):
 
 ```yaml
 - uses: butttons/pi-action-runner@v0
@@ -106,13 +111,23 @@ Only repository owners and members can trigger reviews.
     scip_install: ''
 ```
 
+### Without dora
+
+Uses `git diff`, `grep`, `find`, and file reading for context gathering. No dora install, indexing, or SCIP tooling required.
+
+```yaml
+- uses: butttons/pi-action-runner@v0
+  with:
+    pi_auth: ${{ secrets.PI_AUTH }}
+    use_dora: 'false'
+```
+
 ## How it works
 
 1. Validates the commenter is a repo owner/member.
-2. Installs dora CLI and the SCIP indexer.
-3. Runs `dora init`, optional pre-index setup, then `dora index`.
-4. Runs pi with bash and read tools. pi uses `git diff`, `dora changes`, `dora file`, `dora rdeps`, and other commands to gather context.
-5. Posts a structured review comment on the PR.
+2. If dora is enabled: installs dora CLI and the SCIP indexer, runs `dora init`, optional pre-index setup, then `dora index`.
+3. Runs pi with bash and read tools. With dora, the agent uses `git diff`, `dora changes`, `dora file`, `dora rdeps`, and other dora commands. Without dora, it uses `git diff`, `grep`, `find`, and direct file reading.
+4. Posts a structured review comment on the PR.
 
 Each step logs to GitHub Actions output for full visibility into the review process.
 
@@ -130,7 +145,8 @@ Reviews follow a fixed structure:
 
 - GitHub Actions runner: `ubuntu-latest`
 - Repository secret: `PI_AUTH` (base64 pi auth.json)
-- The action installs its own dependencies (bun, dora via `@butttons/dora`, scip-typescript).
+- With dora enabled (default): the action installs bun, dora (`@butttons/dora`), and the SCIP indexer.
+- With dora disabled: the action only installs bun.
 
 ## License
 

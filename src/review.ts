@@ -50,13 +50,18 @@ export async function runReview({ config }: { config: ReviewConfig }): Promise<s
     baseBranch: config.baseBranch,
     message: config.message,
     extraPrompt: config.extraPrompt,
+    useDora: config.useDora,
   });
 
   const skills: Skill[] = [];
-  const doraSkill = loadDoraSkill({ workingDir: config.workingDir });
-  if (doraSkill) {
-    skills.push(doraSkill);
-    core.info('Loaded dora skill');
+  if (config.useDora) {
+    const doraSkill = loadDoraSkill({ workingDir: config.workingDir });
+    if (doraSkill) {
+      skills.push(doraSkill);
+      core.info('Loaded dora skill');
+    }
+  } else {
+    core.info('Dora disabled -- skipping skill load');
   }
 
   const settingsManager = SettingsManager.inMemory({

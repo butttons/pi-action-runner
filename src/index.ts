@@ -48,6 +48,7 @@ async function run(): Promise<void> {
 
     const workingDir = process.env.GITHUB_WORKSPACE ?? process.cwd();
     const model = core.getInput('pi_model') || 'anthropic/claude-opus-4-6';
+    const useDora = core.getInput('use_dora') !== 'false';
     const extraPrompt = core.getInput('extra_prompt') || '';
 
     const reviewConfig: ReviewConfig = {
@@ -60,6 +61,7 @@ async function run(): Promise<void> {
       extraPrompt,
       message: parsed.message,
       workingDir,
+      useDora,
     };
 
     const reviewBody = await runReview({ config: reviewConfig });

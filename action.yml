@@ -10,6 +10,10 @@ inputs:
     description: 'Model to use for review (provider/model format)'
     required: false
     default: 'anthropic/claude-opus-4-6'
+  use_dora:
+    description: 'Enable dora code intelligence (install, index, and use dora commands in review)'
+    required: false
+    default: 'true'
   dora_version:
     description: 'Dora CLI version (latest or specific tag)'
     required: false
@@ -55,6 +59,7 @@ runs:
         bun install --frozen-lockfile
 
     - name: Install dora
+      if: inputs.use_dora == 'true'
       shell: bash
       run: |
         if [ "${{ inputs.dora_version }}" = "latest" ]; then
@@ -65,7 +70,7 @@ runs:
         dora --version
 
     - name: Install SCIP indexer
-      if: inputs.scip_install != ''
+      if: inputs.use_dora == 'true' && inputs.scip_install != ''
       shell: bash
       run: ${{ inputs.scip_install }}
 
@@ -77,15 +82,17 @@ runs:
         chmod 600 ~/.pi/agent/auth.json
 
     - name: Initialize dora
+      if: inputs.use_dora == 'true'
       shell: bash
       run: dora init
 
     - name: Pre-index setup
-      if: inputs.dora_pre_index != ''
+      if: inputs.use_dora == 'true' && inputs.dora_pre_index != ''
       shell: bash
       run: ${{ inputs.dora_pre_index }}
 
     - name: Build dora index
+      if: inputs.use_dora == 'true'
       shell: bash
       run: |
         ${{ inputs.dora_index_command }}
@@ -97,5 +104,6 @@ runs:
         GITHUB_TOKEN: ${{ github.token }}
         INPUT_PI_AUTH: ${{ inputs.pi_auth }}
         INPUT_PI_MODEL: ${{ inputs.pi_model }}
+        INPUT_USE_DORA: ${{ inputs.use_dora }}
         INPUT_EXTRA_PROMPT: ${{ inputs.extra_prompt }}
       run: bun run ${{ github.action_path }}/src/index.ts

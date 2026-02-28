@@ -15,4 +15,5 @@ export type ReviewConfig = {
   extraPrompt: string;
   message: string;
   workingDir: string;
+  useDora: boolean;
 };
