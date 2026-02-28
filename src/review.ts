@@ -111,9 +111,6 @@ export async function runReview({ config }: { config: ReviewConfig }): Promise<s
     settingsManager,
   });
 
-  let finalResponse = '';
-  let currentToolName = '';
-
   session.subscribe((event) => {
     switch (event.type) {
       case 'turn_start':
@@ -121,7 +118,6 @@ export async function runReview({ config }: { config: ReviewConfig }): Promise<s
         break;
 
       case 'tool_execution_start':
-        currentToolName = event.toolName;
         core.startGroup(`Tool: ${event.toolName}`);
         if (event.toolName === 'bash') {
           core.info(`Command: ${formatArgs({ args: event.args })}`);
@@ -134,7 +130,6 @@ export async function runReview({ config }: { config: ReviewConfig }): Promise<s
         if (event.isError) {
           core.warning(`Tool ${event.toolName} failed`);
         }
-        // Log truncated result for visibility
         const resultText = extractToolResultText({ result: event.result });
         if (resultText) {
           const truncated = resultText.length > 500
@@ -143,14 +138,6 @@ export async function runReview({ config }: { config: ReviewConfig }): Promise<s
           core.info(truncated);
         }
         core.endGroup();
-        currentToolName = '';
-        break;
-
-      case 'message_update':
-        if (event.assistantMessageEvent.type === 'text_delta') {
-          // Accumulate final response text
-          finalResponse += event.assistantMessageEvent.delta;
-        }
         break;
 
       case 'turn_end':
@@ -163,9 +150,30 @@ export async function runReview({ config }: { config: ReviewConfig }): Promise<s
   await session.prompt('Review this pull request.');
   core.endGroup();
 
+  const finalResponse = extractFinalResponse({ messages: session.messages as unknown[] });
+
   session.dispose();
 
   return finalResponse;
+}
+
+function extractFinalResponse({ messages }: { messages: readonly unknown[] }): string {
+  // Walk messages in reverse, find the last assistant message with text content
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const msg = messages[i] as { role?: string; content?: unknown[] } | undefined;
+    if (!msg || msg.role !== 'assistant' || !Array.isArray(msg.content)) continue;
+
+    const textParts = (msg.content as Array<{ type?: string; text?: string }>)
+      .filter((c) => c.type === 'text' && typeof c.text === 'string')
+      .map((c) => c.text as string);
+
+    if (textParts.length > 0) {
+      return textParts.join('\n');
+    }
+  }
+
+  core.warning('No assistant text found in session messages');
+  return '';
 }
 
 function parseModelString({ model }: { model: string }): [string, string] {

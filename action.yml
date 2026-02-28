@@ -14,7 +14,7 @@ inputs:
   pi_model:
     description: 'Model to use for review (provider/model format)'
     required: false
-    default: 'openai/gpt-4.1'
+    default: 'openai/gpt-5.3-codex'
   use_dora:
     description: 'Enable dora code intelligence (install, index, and use dora commands in review)'
     required: false

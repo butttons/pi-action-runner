@@ -47,7 +47,7 @@ async function run(): Promise<void> {
     });
 
     const workingDir = process.env.GITHUB_WORKSPACE ?? process.cwd();
-    const model = core.getInput('pi_model') || 'openai/gpt-4.1';
+    const model = core.getInput('pi_model') || 'openai/gpt-5.3-codex';
     const apiKey = core.getInput('api_key') || '';
     const useDora = core.getInput('use_dora') !== 'false';
     const systemPromptPath = core.getInput('system_prompt') || '';
