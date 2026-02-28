@@ -3,13 +3,18 @@ description: 'AI-powered PR review using pi coding agent and dora code intellige
 author: 'butttons'
 
 inputs:
+  api_key:
+    description: 'API key for the model provider. Preferred over pi_auth -- does not expire.'
+    required: false
+    default: ''
   pi_auth:
-    description: 'Base64-encoded pi auth.json'
-    required: true
+    description: 'Base64-encoded pi auth.json. Fallback if api_key is not set. OAuth tokens may expire.'
+    required: false
+    default: ''
   pi_model:
     description: 'Model to use for review (provider/model format)'
     required: false
-    default: 'anthropic/claude-opus-4-6'
+    default: 'openai/gpt-4.1'
   use_dora:
     description: 'Enable dora code intelligence (install, index, and use dora commands in review)'
     required: false
@@ -83,6 +88,7 @@ runs:
       run: ${{ inputs.scip_install }}
 
     - name: Setup pi auth
+      if: inputs.api_key == '' && inputs.pi_auth != ''
       shell: bash
       run: |
         mkdir -p ~/.pi/agent
@@ -110,6 +116,7 @@ runs:
       shell: bash
       env:
         GITHUB_TOKEN: ${{ github.token }}
+        INPUT_API_KEY: ${{ inputs.api_key }}
         INPUT_PI_AUTH: ${{ inputs.pi_auth }}
         INPUT_PI_MODEL: ${{ inputs.pi_model }}
         INPUT_USE_DORA: ${{ inputs.use_dora }}

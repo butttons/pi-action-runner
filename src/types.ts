@@ -12,6 +12,7 @@ export type ReviewConfig = {
   repoOwner: string;
   repoName: string;
   model: string;
+  apiKey: string;
   extraPrompt: string;
   message: string;
   workingDir: string;

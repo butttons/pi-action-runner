@@ -6,13 +6,12 @@ Comment `@pi review` on a PR to trigger a structured code review posted as a rep
 
 ## Setup
 
-1. Base64-encode your pi `auth.json` and add it as a repository secret named `PI_AUTH`:
+### Option A: API key (recommended)
 
-```bash
-base64 -i ~/.pi/agent/auth.json | pbcopy
-```
+Use a static API key from your provider. Does not expire.
 
-2. Add the workflow to your repo:
+1. Add your API key as a repository secret named `API_KEY` (Settings > Secrets and variables > Actions).
+2. Add the workflow:
 
 ```yaml
 # .github/workflows/pi-review.yml
@@ -35,6 +34,22 @@ jobs:
           fetch-depth: 0
           ref: refs/pull/${{ github.event.issue.number }}/merge
 
+      - uses: butttons/pi-action-runner@v0
+        with:
+          api_key: ${{ secrets.API_KEY }}
+```
+
+### Option B: pi auth.json (fallback)
+
+Use your local pi auth file. OAuth tokens rotate automatically, so the secret may need periodic updates.
+
+```bash
+base64 -i ~/.pi/agent/auth.json | pbcopy
+```
+
+Add as `PI_AUTH` secret, then:
+
+```yaml
       - uses: butttons/pi-action-runner@v0
         with:
           pi_auth: ${{ secrets.PI_AUTH }}
@@ -60,8 +75,9 @@ Only repository owners and members can trigger reviews.
 
 | Input | Required | Default | Description |
 |---|---|---|---|
-| `pi_auth` | Yes | -- | Base64-encoded pi `auth.json` |
-| `pi_model` | No | `anthropic/claude-opus-4-6` | Model in `provider/model-id` format |
+| `api_key` | No | -- | API key for the model provider. Preferred auth method. |
+| `pi_auth` | No | -- | Base64-encoded pi `auth.json`. Fallback if `api_key` is not set. |
+| `pi_model` | No | `openai/gpt-4.1` | Model in `provider/model-id` format |
 | `use_dora` | No | `true` | Enable dora code intelligence. Set to `false` to skip dora entirely. |
 | `dora_version` | No | `latest` | Dora CLI release version |
 | `scip_install` | No | `bun install -g @sourcegraph/scip-typescript` | SCIP indexer install command. Empty string to skip. |
@@ -70,6 +86,8 @@ Only repository owners and members can trigger reviews.
 | `system_prompt` | No | -- | Path to a custom system prompt file (relative to repo root). See [Customizing prompts](#customizing-prompts). |
 | `review_template` | No | -- | Path to a custom review output template file (relative to repo root). See [Customizing prompts](#customizing-prompts). |
 | `extra_prompt` | No | -- | Additional instructions appended to every review |
+
+Either `api_key` or `pi_auth` must be provided. When both are set, `api_key` takes precedence.
 
 The `dora_version`, `scip_install`, `dora_pre_index`, and `dora_index_command` inputs are ignored when `use_dora` is `false`.
 
@@ -82,7 +100,7 @@ The `dora_version`, `scip_install`, `dora_pre_index`, and `dora_index_command` i
 ```yaml
 - uses: butttons/pi-action-runner@v0
   with:
-    pi_auth: ${{ secrets.PI_AUTH }}
+    api_key: ${{ secrets.API_KEY }}
 ```
 
 **Rust**:
@@ -90,7 +108,7 @@ The `dora_version`, `scip_install`, `dora_pre_index`, and `dora_index_command` i
 ```yaml
 - uses: butttons/pi-action-runner@v0
   with:
-    pi_auth: ${{ secrets.PI_AUTH }}
+    api_key: ${{ secrets.API_KEY }}
     scip_install: 'cargo install rust-analyzer'
 ```
 
@@ -99,7 +117,7 @@ The `dora_version`, `scip_install`, `dora_pre_index`, and `dora_index_command` i
 ```yaml
 - uses: butttons/pi-action-runner@v0
   with:
-    pi_auth: ${{ secrets.PI_AUTH }}
+    api_key: ${{ secrets.API_KEY }}
     scip_install: 'pip install scip-python'
     dora_pre_index: 'pip install -e .'
 ```
@@ -109,7 +127,7 @@ The `dora_version`, `scip_install`, `dora_pre_index`, and `dora_index_command` i
 ```yaml
 - uses: butttons/pi-action-runner@v0
   with:
-    pi_auth: ${{ secrets.PI_AUTH }}
+    api_key: ${{ secrets.API_KEY }}
     scip_install: ''
 ```
 
@@ -120,8 +138,17 @@ Uses `git diff`, `grep`, `find`, and file reading for context gathering. No dora
 ```yaml
 - uses: butttons/pi-action-runner@v0
   with:
-    pi_auth: ${{ secrets.PI_AUTH }}
+    api_key: ${{ secrets.API_KEY }}
     use_dora: 'false'
+```
+
+### Different model
+
+```yaml
+- uses: butttons/pi-action-runner@v0
+  with:
+    api_key: ${{ secrets.ANTHROPIC_KEY }}
+    pi_model: 'anthropic/claude-sonnet-4'
 ```
 
 ## Customizing prompts
@@ -137,7 +164,7 @@ To customize, copy a default file into your repo and point the input to it:
 ```yaml
 - uses: butttons/pi-action-runner@v0
   with:
-    pi_auth: ${{ secrets.PI_AUTH }}
+    api_key: ${{ secrets.API_KEY }}
     system_prompt: '.github/review-prompt.md'
     review_template: '.github/review-template.md'
 ```
@@ -178,7 +205,7 @@ Override with `review_template` to use your own format.
 ## Requirements
 
 - GitHub Actions runner: `ubuntu-latest`
-- Repository secret: `PI_AUTH` (base64 pi auth.json)
+- One of: `API_KEY` secret (static API key) or `PI_AUTH` secret (base64 pi auth.json)
 - With dora enabled (default): the action installs bun, dora (`@butttons/dora`), and the SCIP indexer.
 - With dora disabled: the action only installs bun.
 

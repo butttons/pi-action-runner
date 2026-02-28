@@ -47,12 +47,17 @@ async function run(): Promise<void> {
     });
 
     const workingDir = process.env.GITHUB_WORKSPACE ?? process.cwd();
-    const model = core.getInput('pi_model') || 'anthropic/claude-opus-4-6';
+    const model = core.getInput('pi_model') || 'openai/gpt-4.1';
+    const apiKey = core.getInput('api_key') || '';
     const useDora = core.getInput('use_dora') !== 'false';
     const systemPromptPath = core.getInput('system_prompt') || '';
     const reviewTemplatePath = core.getInput('review_template') || '';
     const extraPrompt = core.getInput('extra_prompt') || '';
     const actionPath = core.getInput('action_path') || '';
+
+    if (!apiKey && !core.getInput('pi_auth')) {
+      throw new Error('Either api_key or pi_auth must be provided');
+    }
 
     const reviewConfig: ReviewConfig = {
       prNumber: payload.issue.number,
@@ -61,6 +66,7 @@ async function run(): Promise<void> {
       repoOwner: context.repo.owner,
       repoName: context.repo.repo,
       model,
+      apiKey,
       extraPrompt,
       message: parsed.message,
       workingDir,

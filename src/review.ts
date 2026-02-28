@@ -38,7 +38,11 @@ export async function runReview({ config }: { config: ReviewConfig }): Promise<s
 
   core.info(`Using model: ${providerName}/${modelId}`);
 
-  const authStorage = AuthStorage.create();
+  const authStorage = config.apiKey
+    ? AuthStorage.inMemory({
+        [providerName]: { type: 'api_key', key: config.apiKey },
+      })
+    : AuthStorage.create();
   const modelRegistry = new ModelRegistry(authStorage);
 
   const model = modelRegistry.find(providerName, modelId);
