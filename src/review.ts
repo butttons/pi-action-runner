@@ -13,7 +13,7 @@ import {
   type ResourceLoader,
   type Skill,
 } from '@mariozechner/pi-coding-agent';
-import { buildReviewSystemPrompt } from './prompt.js';
+import { buildReviewSystemPrompt, loadReviewTemplate } from './prompt.js';
 import type { ReviewConfig } from './types.js';
 
 function loadDoraSkill({ workingDir }: { workingDir: string }): Skill | null {
@@ -46,11 +46,21 @@ export async function runReview({ config }: { config: ReviewConfig }): Promise<s
     throw new Error(`Model not found: ${providerName}/${modelId}`);
   }
 
+  const reviewTemplate = loadReviewTemplate({
+    reviewTemplatePath: config.reviewTemplatePath,
+    workingDir: config.workingDir,
+    actionPath: config.actionPath,
+  });
+
   const systemPrompt = buildReviewSystemPrompt({
     baseBranch: config.baseBranch,
     message: config.message,
     extraPrompt: config.extraPrompt,
     useDora: config.useDora,
+    systemPromptPath: config.systemPromptPath,
+    reviewTemplate,
+    workingDir: config.workingDir,
+    actionPath: config.actionPath,
   });
 
   const skills: Skill[] = [];

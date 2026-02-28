@@ -30,6 +30,14 @@ inputs:
     description: 'Override the dora index command'
     required: false
     default: 'dora index'
+  system_prompt:
+    description: 'Path to a custom system prompt file (relative to repo root). Supports {base_branch} interpolation.'
+    required: false
+    default: ''
+  review_template:
+    description: 'Path to a custom review output template file (relative to repo root).'
+    required: false
+    default: ''
   extra_prompt:
     description: 'Additional instructions to append to review prompt'
     required: false
@@ -105,5 +113,8 @@ runs:
         INPUT_PI_AUTH: ${{ inputs.pi_auth }}
         INPUT_PI_MODEL: ${{ inputs.pi_model }}
         INPUT_USE_DORA: ${{ inputs.use_dora }}
+        INPUT_SYSTEM_PROMPT: ${{ inputs.system_prompt }}
+        INPUT_REVIEW_TEMPLATE: ${{ inputs.review_template }}
         INPUT_EXTRA_PROMPT: ${{ inputs.extra_prompt }}
+        INPUT_ACTION_PATH: ${{ github.action_path }}
       run: bun run ${{ github.action_path }}/src/index.ts

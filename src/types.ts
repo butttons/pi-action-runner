@@ -16,4 +16,7 @@ export type ReviewConfig = {
   message: string;
   workingDir: string;
   useDora: boolean;
+  systemPromptPath: string;
+  reviewTemplatePath: string;
+  actionPath: string;
 };

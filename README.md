@@ -67,6 +67,8 @@ Only repository owners and members can trigger reviews.
 | `scip_install` | No | `bun install -g @sourcegraph/scip-typescript` | SCIP indexer install command. Empty string to skip. |
 | `dora_pre_index` | No | -- | Commands to run after `dora init` but before indexing (e.g. install project deps) |
 | `dora_index_command` | No | `dora index` | Override the index command |
+| `system_prompt` | No | -- | Path to a custom system prompt file (relative to repo root). See [Customizing prompts](#customizing-prompts). |
+| `review_template` | No | -- | Path to a custom review output template file (relative to repo root). See [Customizing prompts](#customizing-prompts). |
 | `extra_prompt` | No | -- | Additional instructions appended to every review |
 
 The `dora_version`, `scip_install`, `dora_pre_index`, and `dora_index_command` inputs are ignored when `use_dora` is `false`.
@@ -122,6 +124,36 @@ Uses `git diff`, `grep`, `find`, and file reading for context gathering. No dora
     use_dora: 'false'
 ```
 
+## Customizing prompts
+
+The system prompt and review output template are fully replaceable. Default files are in [`prompts/`](./prompts/):
+
+- [`prompts/system-dora.md`](./prompts/system-dora.md) -- default system prompt when dora is enabled
+- [`prompts/system-git.md`](./prompts/system-git.md) -- default system prompt when dora is disabled
+- [`prompts/review-template.md`](./prompts/review-template.md) -- default review output structure
+
+To customize, copy a default file into your repo and point the input to it:
+
+```yaml
+- uses: butttons/pi-action-runner@v0
+  with:
+    pi_auth: ${{ secrets.PI_AUTH }}
+    system_prompt: '.github/review-prompt.md'
+    review_template: '.github/review-template.md'
+```
+
+### System prompt
+
+Use `{base_branch}` anywhere in your prompt -- it gets replaced with the PR's target branch (e.g. `main`).
+
+When `system_prompt` is set, it replaces the entire default prompt. The `use_dora` toggle has no effect on the prompt content in this case -- you control everything.
+
+The `extra_prompt` input and the per-review comment message are still appended after your custom prompt.
+
+### Review template
+
+The review template defines the markdown structure the agent outputs. It gets appended to the system prompt under an "Output" heading with instructions to produce only that format.
+
 ## How it works
 
 1. Validates the commenter is a repo owner/member.
@@ -133,13 +165,15 @@ Each step logs to GitHub Actions output for full visibility into the review proc
 
 ## Review output
 
-Reviews follow a fixed structure:
+The default review template produces this structure:
 
 - **Summary** -- what the PR does and why.
 - **Risk Assessment** -- LOW, MEDIUM, or HIGH with justification.
 - **Issues** -- bugs, security, correctness problems with severity and file locations.
 - **Suggestions** -- improvements worth considering.
 - **Architecture** -- structural concerns, only when applicable.
+
+Override with `review_template` to use your own format.
 
 ## Requirements
 

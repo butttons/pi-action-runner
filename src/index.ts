@@ -49,7 +49,10 @@ async function run(): Promise<void> {
     const workingDir = process.env.GITHUB_WORKSPACE ?? process.cwd();
     const model = core.getInput('pi_model') || 'anthropic/claude-opus-4-6';
     const useDora = core.getInput('use_dora') !== 'false';
+    const systemPromptPath = core.getInput('system_prompt') || '';
+    const reviewTemplatePath = core.getInput('review_template') || '';
     const extraPrompt = core.getInput('extra_prompt') || '';
+    const actionPath = core.getInput('action_path') || '';
 
     const reviewConfig: ReviewConfig = {
       prNumber: payload.issue.number,
@@ -62,6 +65,9 @@ async function run(): Promise<void> {
       message: parsed.message,
       workingDir,
       useDora,
+      systemPromptPath,
+      reviewTemplatePath,
+      actionPath,
     };
 
     const reviewBody = await runReview({ config: reviewConfig });
