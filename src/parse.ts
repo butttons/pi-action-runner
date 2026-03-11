@@ -3,8 +3,8 @@ import type { ParsedTrigger } from './types.js';
 // Matches "@pi review [optional message]" -- only valid on PR comments
 const REVIEW_PATTERN = /^@pi\s+review(?:\s+(.*))?$/is;
 
-// Matches "@pi [optional message]" -- general trigger for all other contexts
-const MENTION_PATTERN = /^@pi(?:\s+(.*))?$/is;
+// Matches "@pi [optional message]" anywhere in the body
+const MENTION_PATTERN = /@pi(?:\s+(.*))?$/is;
 
 export function parseReviewTrigger({ body }: { body: string }): ParsedTrigger | null {
   const trimmed = body.trim();
@@ -22,7 +22,7 @@ export function parseMentionTrigger({
 }): ParsedTrigger | null {
   const trimmed = body.trim();
 
-  // If it starts with "@pi review" it's not a general mention
+  // If the body is exactly "@pi review ..." it's a review trigger, not a general mention
   if (REVIEW_PATTERN.test(trimmed)) return null;
 
   const match = trimmed.match(MENTION_PATTERN);
