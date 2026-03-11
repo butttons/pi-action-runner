@@ -71,12 +71,17 @@ runs:
       with:
         no-cache: false
 
+    - name: Hash action lockfile
+      id: action-lockfile-hash
+      shell: bash
+      run: echo "hash=$(sha256sum ${{ github.action_path }}/bun.lock | cut -d' ' -f1)" >> $GITHUB_OUTPUT
+
     - name: Restore action node_modules cache
       id: cache-action-deps
       uses: actions/cache@v4
       with:
         path: ${{ github.action_path }}/node_modules
-        key: pi-action-deps-${{ runner.os }}-${{ hashFiles(format('{0}/bun.lock', github.action_path)) }}
+        key: pi-action-deps-${{ runner.os }}-${{ steps.action-lockfile-hash.outputs.hash }}
 
     - name: Install action dependencies
       if: steps.cache-action-deps.outputs.cache-hit != 'true'
