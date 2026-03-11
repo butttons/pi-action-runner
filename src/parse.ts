@@ -1,25 +1,36 @@
-import type { ParsedComment, Command } from './types.js';
+import type { ParsedTrigger } from './types.js';
 
-const VALID_COMMANDS: ReadonlySet<string> = new Set<Command>(['review']);
+// Matches "@pi review [optional message]" -- only valid on PR comments
+const REVIEW_PATTERN = /^@pi\s+review(?:\s+(.*))?$/is;
 
-const PI_MENTION_PATTERN = /^@pi\s+(\S+)(?:\s+(.*))?$/s;
+// Matches "@pi [optional message]" -- general trigger for all other contexts
+const MENTION_PATTERN = /^@pi(?:\s+(.*))?$/is;
 
-export function parseComment({ body }: { body: string }): ParsedComment | null {
+export function parseReviewTrigger({ body }: { body: string }): ParsedTrigger | null {
   const trimmed = body.trim();
-  const match = trimmed.match(PI_MENTION_PATTERN);
+  const match = trimmed.match(REVIEW_PATTERN);
+  if (!match) return null;
+  return { command: 'review', message: match[1]?.trim() ?? '' };
+}
 
-  if (!match) {
-    return null;
-  }
+export function parseMentionTrigger({
+  body,
+  command,
+}: {
+  body: string;
+  command: 'comment' | 'issue' | 'discussion';
+}): ParsedTrigger | null {
+  const trimmed = body.trim();
 
-  const [, rawCommand, rawMessage] = match;
+  // If it starts with "@pi review" it's not a general mention
+  if (REVIEW_PATTERN.test(trimmed)) return null;
 
-  if (!rawCommand || !VALID_COMMANDS.has(rawCommand)) {
-    return null;
-  }
+  const match = trimmed.match(MENTION_PATTERN);
+  if (!match) return null;
 
-  return {
-    command: rawCommand as Command,
-    message: rawMessage?.trim() ?? '',
-  };
+  return { command, message: match[1]?.trim() ?? '' };
+}
+
+export function containsPiMention({ body }: { body: string }): boolean {
+  return /@pi\b/i.test(body);
 }

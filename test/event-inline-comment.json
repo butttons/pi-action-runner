@@ -1,0 +1,23 @@
+{
+  "action": "created",
+  "pull_request": {
+    "number": 1
+  },
+  "comment": {
+    "id": 2,
+    "body": "@pi is this safe to call concurrently?",
+    "author_association": "OWNER",
+    "path": "src/engine.ts",
+    "line": 42,
+    "diff_hunk": "@@ -38,6 +38,10 @@ export class Engine {\n+  async process(job: Job) {\n+    return this.queue.push(job);\n+  }",
+    "user": {
+      "login": "butttons"
+    }
+  },
+  "repository": {
+    "owner": {
+      "login": "butttons"
+    },
+    "name": "pi-action-runner"
+  }
+}

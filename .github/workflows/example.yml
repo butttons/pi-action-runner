@@ -1,25 +1,44 @@
-name: Pi Review
+name: Pi
 on:
+  # @pi review on a PR comment
   issue_comment:
+    types: [created]
+  # @pi on an inline PR file comment
+  pull_request_review_comment:
+    types: [created]
+  # @pi in an issue body (opened/edited) or an issue comment
+  issues:
+    types: [opened, edited]
+  # @pi in a discussion body or discussion comment
+  discussion:
+    types: [created, edited]
+  discussion_comment:
     types: [created]
 
 jobs:
-  review:
-    if: github.event.issue.pull_request && startsWith(github.event.comment.body, '@pi ')
+  pi:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       pull-requests: write
       issues: write
+      discussions: write
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: refs/pull/${{ github.event.issue.number }}/merge
+          # Check out the PR head when triggered from a PR context
+          ref: >-
+            ${{
+              github.event.pull_request.head.sha ||
+              (github.event.issue.pull_request && format('refs/pull/{0}/merge', github.event.issue.number)) ||
+              github.sha
+            }}
 
       - uses: butttons/pi-action-runner@v0
         with:
           pi_auth: ${{ secrets.PI_AUTH }}
-          # pi_model: 'anthropic/claude-opus-4-6'
-          # dora_version: 'latest'
+          # api_key: ${{ secrets.OPENCODE_API_KEY }}
+          # pi_model: 'opencode-go/kimi-k2.5'
+          # use_dora: 'true'
           # extra_prompt: 'Focus on error handling'

@@ -1,0 +1,16 @@
+{
+  "action": "created",
+  "discussion": {
+    "number": 3,
+    "node_id": "D_kwDOABCDEF4AXyzW",
+    "title": "Architecture: moving to edge-first rendering",
+    "body": "Thinking about moving all rendering to the edge. @pi what parts of the current codebase would be hardest to migrate and why?"
+  },
+  "comment": null,
+  "repository": {
+    "owner": {
+      "login": "butttons"
+    },
+    "name": "pi-action-runner"
+  }
+}

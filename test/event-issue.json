@@ -1,0 +1,19 @@
+{
+  "action": "created",
+  "issue": {
+    "number": 7,
+    "title": "Migrate storage layer to D1",
+    "body": "We need to move from KV to D1 for the storage layer.\n\n@pi can you map out what currently exists in the storage layer and what would need to change?",
+    "author_association": "OWNER",
+    "user": {
+      "login": "butttons"
+    }
+  },
+  "comment": null,
+  "repository": {
+    "owner": {
+      "login": "butttons"
+    },
+    "name": "pi-action-runner"
+  }
+}

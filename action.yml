@@ -1,5 +1,5 @@
-name: 'Pi Code Review'
-description: 'AI-powered PR review using pi coding agent and dora code intelligence'
+name: 'Pi Action Runner'
+description: 'AI-powered GitHub automation -- PR review, inline comments, issues, and discussions'
 author: 'butttons'
 
 inputs:
@@ -12,9 +12,9 @@ inputs:
     required: false
     default: ''
   pi_model:
-    description: 'Model to use for review (provider/model format)'
+    description: 'Model to use (provider/model format)'
     required: false
-    default: 'openai/gpt-5.3-codex'
+    default: 'opencode-go/kimi-k2.5'
   use_dora:
     description: 'Enable dora code intelligence (install, index, and use dora commands in review)'
     required: false
@@ -51,8 +51,8 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    - name: React to comment
-      if: github.event_name == 'issue_comment'
+    - name: React to trigger
+      if: github.event_name == 'issue_comment' && github.event.issue.pull_request
       shell: bash
       env:
         GITHUB_TOKEN: ${{ github.token }}
@@ -112,7 +112,7 @@ runs:
         ${{ inputs.dora_index_command }}
         dora status
 
-    - name: Run pi review
+    - name: Run pi
       shell: bash
       env:
         GITHUB_TOKEN: ${{ github.token }}
