@@ -1,15 +1,11 @@
 name: Pi
 on:
-  # @pi review on a PR comment
   issue_comment:
     types: [created]
-  # @pi on an inline PR file comment
   pull_request_review_comment:
     types: [created]
-  # @pi in an issue body (opened/edited) or an issue comment
   issues:
     types: [opened, edited]
-  # @pi in a discussion body or discussion comment
   discussion:
     types: [created, edited]
   discussion_comment:
@@ -17,6 +13,10 @@ on:
 
 jobs:
   pi:
+    if: |
+      contains(github.event.comment.body, '@pi') ||
+      contains(github.event.issue.body, '@pi') ||
+      contains(github.event.discussion.body, '@pi')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -27,7 +27,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          # Check out the PR head when triggered from a PR context
           ref: >-
             ${{
               github.event.pull_request.head.sha ||
@@ -41,4 +40,5 @@ jobs:
           # api_key: ${{ secrets.OPENCODE_API_KEY }}
           # pi_model: 'opencode-go/kimi-k2.5'
           # use_dora: 'true'
+          # project_lockfile: 'pnpm-lock.yaml'
           # extra_prompt: 'Focus on error handling'

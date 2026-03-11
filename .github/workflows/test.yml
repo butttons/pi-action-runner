@@ -13,6 +13,10 @@ on:
 
 jobs:
   pi:
+    if: |
+      contains(github.event.comment.body, '@pi') ||
+      contains(github.event.issue.body, '@pi') ||
+      contains(github.event.discussion.body, '@pi')
     runs-on: ubuntu-latest
     permissions:
       contents: read
