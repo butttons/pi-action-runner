@@ -35,6 +35,10 @@ inputs:
     description: 'Override the dora index command'
     required: false
     default: 'dora index'
+  project_lockfile:
+    description: 'Path to your project lockfile (e.g. pnpm-lock.yaml, bun.lock). When set, node_modules is cached keyed on this file so dora_pre_index installs are skipped on cache hit.'
+    required: false
+    default: ''
   system_prompt:
     description: 'Path to a custom system prompt file (relative to repo root). Supports {base_branch} interpolation.'
     required: false
@@ -64,15 +68,33 @@ runs:
 
     - name: Setup Bun
       uses: oven-sh/setup-bun@v2
+      with:
+        cache: true
+
+    - name: Restore action node_modules cache
+      id: cache-action-deps
+      uses: actions/cache@v4
+      with:
+        path: ${{ github.action_path }}/node_modules
+        key: pi-action-deps-${{ runner.os }}-${{ hashFiles(format('{0}/bun.lock', github.action_path)) }}
 
     - name: Install action dependencies
+      if: steps.cache-action-deps.outputs.cache-hit != 'true'
       shell: bash
       run: |
         cd ${{ github.action_path }}
         bun install --frozen-lockfile
 
-    - name: Install dora
+    - name: Restore dora + scip cache
       if: inputs.use_dora == 'true'
+      id: cache-dora
+      uses: actions/cache@v4
+      with:
+        path: ~/.bun
+        key: pi-dora-${{ runner.os }}-${{ inputs.dora_version }}-${{ inputs.scip_install }}
+
+    - name: Install dora
+      if: inputs.use_dora == 'true' && steps.cache-dora.outputs.cache-hit != 'true'
       shell: bash
       run: |
         if [ "${{ inputs.dora_version }}" = "latest" ]; then
@@ -80,12 +102,16 @@ runs:
         else
           bun add -g @butttons/dora@${{ inputs.dora_version }}
         fi
-        dora --version
 
     - name: Install SCIP indexer
-      if: inputs.use_dora == 'true' && inputs.scip_install != ''
+      if: inputs.use_dora == 'true' && inputs.scip_install != '' && steps.cache-dora.outputs.cache-hit != 'true'
       shell: bash
       run: ${{ inputs.scip_install }}
+
+    - name: Verify dora
+      if: inputs.use_dora == 'true'
+      shell: bash
+      run: dora --version
 
     - name: Setup pi auth
       if: inputs.api_key == '' && inputs.pi_auth != ''
@@ -100,8 +126,16 @@ runs:
       shell: bash
       run: dora init
 
+    - name: Restore project node_modules cache
+      if: inputs.use_dora == 'true' && inputs.project_lockfile != ''
+      id: cache-project-deps
+      uses: actions/cache@v4
+      with:
+        path: node_modules
+        key: pi-project-deps-${{ runner.os }}-${{ hashFiles(inputs.project_lockfile) }}
+
     - name: Pre-index setup
-      if: inputs.use_dora == 'true' && inputs.dora_pre_index != ''
+      if: inputs.use_dora == 'true' && inputs.dora_pre_index != '' && steps.cache-project-deps.outputs.cache-hit != 'true'
       shell: bash
       run: ${{ inputs.dora_pre_index }}
 
