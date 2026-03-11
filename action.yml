@@ -126,8 +126,16 @@ runs:
       shell: bash
       run: dora init
 
+    - name: Restore dora index cache
+      if: inputs.use_dora == 'true'
+      id: cache-dora-index
+      uses: actions/cache@v4
+      with:
+        path: .dora
+        key: pi-dora-index-${{ runner.os }}-${{ github.sha }}
+
     - name: Restore project node_modules cache
-      if: inputs.use_dora == 'true' && inputs.project_lockfile != ''
+      if: inputs.use_dora == 'true' && inputs.project_lockfile != '' && steps.cache-dora-index.outputs.cache-hit != 'true'
       id: cache-project-deps
       uses: actions/cache@v4
       with:
@@ -135,12 +143,12 @@ runs:
         key: pi-project-deps-${{ runner.os }}-${{ hashFiles(inputs.project_lockfile) }}
 
     - name: Pre-index setup
-      if: inputs.use_dora == 'true' && inputs.dora_pre_index != '' && steps.cache-project-deps.outputs.cache-hit != 'true'
+      if: inputs.use_dora == 'true' && inputs.dora_pre_index != '' && steps.cache-dora-index.outputs.cache-hit != 'true' && steps.cache-project-deps.outputs.cache-hit != 'true'
       shell: bash
       run: ${{ inputs.dora_pre_index }}
 
     - name: Build dora index
-      if: inputs.use_dora == 'true'
+      if: inputs.use_dora == 'true' && steps.cache-dora-index.outputs.cache-hit != 'true'
       shell: bash
       run: |
         ${{ inputs.dora_index_command }}
