@@ -1,61 +1,84 @@
 # pi-action-runner
 
-GitHub Action that runs AI-powered PR reviews using [pi](https://github.com/badlogic/pi-mono) and optionally [dora](https://github.com/butttons/dora) for code intelligence.
+GitHub Action that runs AI-powered automation using [pi](https://github.com/badlogic/pi-mono) and optionally [dora](https://github.com/butttons/dora) for code intelligence.
 
-Comment `@pi review` on a PR to trigger a structured code review posted as a reply.
+Mention `@pi` anywhere on GitHub to trigger a response:
+
+| Where | Trigger | What happens |
+|---|---|---|
+| PR comment | `@pi review` | Structured code review posted on the PR |
+| PR file comment | `@pi <question>` | Reads the file in context, replies in the thread |
+| Issue | `@pi <question>` | Explores the codebase, replies in the issue |
+| Discussion | `@pi <question>` | Explores the codebase, replies in the discussion |
+
+Only repository owners, members, and collaborators can trigger the action.
 
 ## Setup
 
-### Option A: API key (recommended)
+### 1. Add a secret
 
-Use a static API key from your provider. Does not expire.
+**Option A: API key (recommended)** -- static, never expires.
 
-1. Add your API key as a repository secret named `API_KEY` (Settings > Secrets and variables > Actions).
-2. Add the workflow:
+Add your provider API key as a repository secret (Settings > Secrets and variables > Actions). For example, `ANTHROPIC_KEY` or `OPENAI_KEY`.
 
-```yaml
-# .github/workflows/pi-review.yml
-name: Pi Review
-on:
-  issue_comment:
-    types: [created]
-
-jobs:
-  review:
-    if: github.event.issue.pull_request && startsWith(github.event.comment.body, '@pi ')
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
-      issues: write
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          ref: refs/pull/${{ github.event.issue.number }}/merge
-
-      - uses: butttons/pi-action-runner@v0
-        with:
-          api_key: ${{ secrets.API_KEY }}
-```
-
-### Option B: pi auth.json (fallback)
-
-Use your local pi auth file. OAuth tokens rotate automatically, so the secret may need periodic updates.
+**Option B: pi auth.json** -- uses your local pi OAuth session. May need periodic rotation.
 
 ```bash
 base64 -i ~/.pi/agent/auth.json | pbcopy
 ```
 
-Add as `PI_AUTH` secret, then:
+Add as `PI_AUTH` secret.
+
+### 2. Add the workflow
 
 ```yaml
-      - uses: butttons/pi-action-runner@v0
+# .github/workflows/pi.yml
+name: Pi
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  issues:
+    types: [opened, edited]
+  discussion:
+    types: [created, edited]
+  discussion_comment:
+    types: [created]
+
+jobs:
+  pi:
+    if: |
+      contains(github.event.comment.body, '@pi') ||
+      contains(github.event.issue.body, '@pi') ||
+      contains(github.event.discussion.body, '@pi')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      discussions: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: >-
+            ${{
+              github.event.pull_request.head.sha ||
+              (github.event.issue.pull_request && format('refs/pull/{0}/merge', github.event.issue.number)) ||
+              github.sha
+            }}
+
+      - uses: butttons/pi-action-runner@main
         with:
           pi_auth: ${{ secrets.PI_AUTH }}
+          # api_key: ${{ secrets.ANTHROPIC_KEY }}
+          # pi_model: 'anthropic/claude-sonnet-4'
 ```
 
 ## Usage
+
+### PR review
 
 Comment on any PR:
 
@@ -69,74 +92,107 @@ With additional context:
 @pi review focus on error handling and edge cases
 ```
 
-Only repository owners and members can trigger reviews.
+### Inline file comment
+
+On the Files Changed tab of a PR, leave a comment on any line:
+
+```
+@pi is this safe to call concurrently?
+```
+
+```
+@pi what happens if this returns null?
+```
+
+The agent reads the full file for context before responding.
+
+### Issue
+
+Mention `@pi` anywhere in an issue body when opening it, or in a follow-up comment:
+
+```
+We need to migrate the storage layer to D1.
+
+@pi can you map out what currently exists and what would need to change?
+```
+
+The agent explores the codebase and posts a grounded reply.
+
+### Discussion
+
+Mention `@pi` in a discussion body or reply:
+
+```
+Thinking about moving all rendering to the edge.
+
+@pi what parts of the codebase would be hardest to migrate and why?
+```
 
 ## Inputs
 
-| Input | Required | Default | Description |
-|---|---|---|---|
-| `api_key` | No | -- | API key for the model provider. Preferred auth method. |
-| `pi_auth` | No | -- | Base64-encoded pi `auth.json`. Fallback if `api_key` is not set. |
-| `pi_model` | No | `openai/gpt-4.1` | Model in `provider/model-id` format |
-| `use_dora` | No | `true` | Enable dora code intelligence. Set to `false` to skip dora entirely. |
-| `dora_version` | No | `latest` | Dora CLI release version |
-| `scip_install` | No | `bun install -g @sourcegraph/scip-typescript` | SCIP indexer install command. Empty string to skip. |
-| `dora_pre_index` | No | -- | Commands to run after `dora init` but before indexing (e.g. install project deps) |
-| `dora_index_command` | No | `dora index` | Override the index command |
-| `system_prompt` | No | -- | Path to a custom system prompt file (relative to repo root). See [Customizing prompts](#customizing-prompts). |
-| `review_template` | No | -- | Path to a custom review output template file (relative to repo root). See [Customizing prompts](#customizing-prompts). |
-| `extra_prompt` | No | -- | Additional instructions appended to every review |
+| Input | Default | Description |
+|---|---|---|
+| `api_key` | -- | API key for the model provider. Preferred over `pi_auth`. |
+| `pi_auth` | -- | Base64-encoded pi `auth.json`. Fallback when `api_key` is not set. |
+| `pi_model` | `opencode-go/kimi-k2.5` | Model in `provider/model-id` format. |
+| `use_dora` | `true` | Enable dora code intelligence. |
+| `dora_version` | `latest` | Dora CLI version tag. |
+| `scip_install` | `bun install -g @sourcegraph/scip-typescript` | SCIP indexer install command. Set to empty string to skip. |
+| `dora_pre_index` | -- | Commands to run after `dora init` but before indexing (e.g. install project deps). |
+| `dora_index_command` | `dora index` | Override the dora index command. |
+| `project_lockfile` | -- | Path to your project lockfile (e.g. `pnpm-lock.yaml`). When set, `node_modules` is cached across runs. |
+| `system_prompt` | -- | Path to a custom system prompt for PR reviews (relative to repo root). |
+| `review_template` | -- | Path to a custom review output template (relative to repo root). |
+| `extra_prompt` | -- | Additional instructions appended to every review prompt. |
 
 Either `api_key` or `pi_auth` must be provided. When both are set, `api_key` takes precedence.
 
-The `dora_version`, `scip_install`, `dora_pre_index`, and `dora_index_command` inputs are ignored when `use_dora` is `false`.
-
 ## Examples
 
-### With dora (default)
-
-**TypeScript/JavaScript** (no extra config needed):
+### Monorepo with pnpm
 
 ```yaml
-- uses: butttons/pi-action-runner@v0
+- uses: butttons/pi-action-runner@main
   with:
-    api_key: ${{ secrets.API_KEY }}
+    pi_auth: ${{ secrets.PI_AUTH }}
+    project_lockfile: 'pnpm-lock.yaml'
+    dora_pre_index: 'pnpm install --frozen-lockfile'
 ```
 
-**Rust**:
+### Large codebase (increase Node heap for dora indexing)
 
 ```yaml
-- uses: butttons/pi-action-runner@v0
+- uses: butttons/pi-action-runner@main
+  with:
+    api_key: ${{ secrets.ANTHROPIC_KEY }}
+    dora_index_command: 'NODE_OPTIONS="--max-old-space-size=6144" dora index'
+```
+
+### Rust project
+
+```yaml
+- uses: butttons/pi-action-runner@main
   with:
     api_key: ${{ secrets.API_KEY }}
     scip_install: 'cargo install rust-analyzer'
 ```
 
-**Python**:
+### Python project
 
 ```yaml
-- uses: butttons/pi-action-runner@v0
+- uses: butttons/pi-action-runner@main
   with:
     api_key: ${{ secrets.API_KEY }}
     scip_install: 'pip install scip-python'
     dora_pre_index: 'pip install -e .'
 ```
 
-**Skip the SCIP indexer** (dora still provides file-level analysis):
-
-```yaml
-- uses: butttons/pi-action-runner@v0
-  with:
-    api_key: ${{ secrets.API_KEY }}
-    scip_install: ''
-```
-
 ### Without dora
 
-Uses `git diff`, `grep`, `find`, and file reading for context gathering. No dora install, indexing, or SCIP tooling required.
+Uses `git diff`, `grep`, `find`, and direct file reading only. Faster setup, no indexing.
 
 ```yaml
-- uses: butttons/pi-action-runner@v0
+- uses: butttons/pi-action-runner@main
   with:
     api_key: ${{ secrets.API_KEY }}
     use_dora: 'false'
@@ -145,7 +201,7 @@ Uses `git diff`, `grep`, `find`, and file reading for context gathering. No dora
 ### Different model
 
 ```yaml
-- uses: butttons/pi-action-runner@v0
+- uses: butttons/pi-action-runner@main
   with:
     api_key: ${{ secrets.ANTHROPIC_KEY }}
     pi_model: 'anthropic/claude-sonnet-4'
@@ -153,61 +209,66 @@ Uses `git diff`, `grep`, `find`, and file reading for context gathering. No dora
 
 ## Customizing prompts
 
-The system prompt and review output template are fully replaceable. Default files are in [`prompts/`](./prompts/):
+### PR review
 
-- [`prompts/system-dora.md`](./prompts/system-dora.md) -- default system prompt when dora is enabled
-- [`prompts/system-git.md`](./prompts/system-git.md) -- default system prompt when dora is disabled
-- [`prompts/review-template.md`](./prompts/review-template.md) -- default review output structure
+The system prompt and output template for PR reviews are fully replaceable. Defaults are in [`prompts/`](./prompts/):
 
-To customize, copy a default file into your repo and point the input to it:
+- [`prompts/system-dora.md`](./prompts/system-dora.md) -- used when dora is enabled
+- [`prompts/system-git.md`](./prompts/system-git.md) -- used when dora is disabled
+- [`prompts/review-template.md`](./prompts/review-template.md) -- output structure
+
+Point the inputs to your own files:
 
 ```yaml
-- uses: butttons/pi-action-runner@v0
+- uses: butttons/pi-action-runner@main
   with:
     api_key: ${{ secrets.API_KEY }}
     system_prompt: '.github/review-prompt.md'
     review_template: '.github/review-template.md'
 ```
 
-### System prompt
+Use `{base_branch}` in your system prompt -- it gets replaced with the PR's target branch (e.g. `main`).
 
-Use `{base_branch}` anywhere in your prompt -- it gets replaced with the PR's target branch (e.g. `main`).
+### Inline comments, issues, discussions
 
-When `system_prompt` is set, it replaces the entire default prompt. The `use_dora` toggle has no effect on the prompt content in this case -- you control everything.
+Drop a markdown file in `.pi/prompts/` in your repo to override the default system prompt for each handler:
 
-The `extra_prompt` input and the per-review comment message are still appended after your custom prompt.
+| File | Overrides |
+|---|---|
+| `.pi/prompts/inline-comment.md` | Inline PR file comment handler |
+| `.pi/prompts/issue.md` | Issue handler |
+| `.pi/prompts/discussion.md` | Discussion handler |
 
-### Review template
+## Caching
 
-The review template defines the markdown structure the agent outputs. It gets appended to the system prompt under an "Output" heading with instructions to produce only that format.
+The action caches the following automatically:
+
+| What | Cache key |
+|---|---|
+| Bun binary | Managed by `setup-bun` |
+| Action `node_modules` | Hash of `bun.lock` |
+| dora + scip globals (`~/.bun`) | dora version + scip install command |
+| Dora index (`.dora/`) | Commit SHA -- busted on every new commit |
+| Project `node_modules` | Hash of `project_lockfile` -- only when `project_lockfile` is set |
+
+On a warm run (same commit, same deps), only the dora agent itself runs -- all installs and indexing are skipped.
 
 ## How it works
 
-1. Validates the commenter is a repo owner/member.
-2. If dora is enabled: installs dora CLI and the SCIP indexer, runs `dora init`, optional pre-index setup, then `dora index`.
-3. Runs pi with bash and read tools. With dora, the agent uses `git diff`, `dora changes`, `dora file`, `dora rdeps`, and other dora commands. Without dora, it uses `git diff`, `grep`, `find`, and direct file reading.
-4. Posts a structured review comment on the PR.
-
-Each step logs to GitHub Actions output for full visibility into the review process.
-
-## Review output
-
-The default review template produces this structure:
-
-- **Summary** -- what the PR does and why.
-- **Risk Assessment** -- LOW, MEDIUM, or HIGH with justification.
-- **Issues** -- bugs, security, correctness problems with severity and file locations.
-- **Suggestions** -- improvements worth considering.
-- **Architecture** -- structural concerns, only when applicable.
-
-Override with `review_template` to use your own format.
+1. Validates the commenter is a repo owner, member, or collaborator.
+2. Routes based on the GitHub event:
+   - `issue_comment` on a PR → `@pi review` triggers a full review
+   - `pull_request_review_comment` → reads the file, replies to the thread
+   - `issues` / `issue_comment` on a plain issue → explores codebase, replies in the issue
+   - `discussion` / `discussion_comment` → explores codebase, replies in the discussion
+3. If dora is enabled: installs dora + SCIP indexer (cached), runs `dora init` + `dora index` (cached per commit).
+4. Runs the pi agent with bash and read tools. The agent uses dora commands, `git diff`, `grep`, `find`, and direct file reading to gather context.
+5. Posts the response via the appropriate GitHub API (REST for PRs/issues, GraphQL for discussions).
 
 ## Requirements
 
 - GitHub Actions runner: `ubuntu-latest`
-- One of: `API_KEY` secret (static API key) or `PI_AUTH` secret (base64 pi auth.json)
-- With dora enabled (default): the action installs bun, dora (`@butttons/dora`), and the SCIP indexer.
-- With dora disabled: the action only installs bun.
+- One of: a provider API key or a base64-encoded pi `auth.json`
 
 ## License
 
