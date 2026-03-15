@@ -204,14 +204,20 @@ Uses `git diff`, `grep`, `find`, and direct file reading only. Faster setup, no 
 
 ### With Obsidian vault
 
-Connect an Obsidian vault from another repo to give the agent access to documentation and architecture notes:
+Connect an Obsidian vault from another repo to give the agent access to documentation and architecture notes.
 
+**Setup:**
+1. Create a GitHub Personal Access Token with `contents:read` scope for your vault repo
+2. Add it as a repository secret (e.g., `OBSIDIAN_TOKEN`) in the repo where the action runs
+
+**Usage:**
 ```yaml
 - uses: butttons/pi-action-runner@main
   with:
     api_key: ${{ secrets.API_KEY }}
     obsidian_vault_repo: 'myorg/documentation'
-    obsidian_token: ${{ secrets.VAULT_TOKEN }}  # for private vault repos
+    obsidian_vault_name: 'Docs'  # optional, defaults to repo name
+    obsidian_token: ${{ secrets.OBSIDIAN_TOKEN }}  # required for private vaults
     obsidian_prompt: |
       Before making architectural decisions, check the vault for documented patterns.
       Search for relevant docs using `obi search` and read the full notes.
@@ -275,7 +281,7 @@ The action caches the following automatically:
 | dora + scip globals (`~/.bun`) | dora version + scip install command |
 | Dora index (`.dora/`) | Commit SHA -- busted on every new commit |
 | Project `node_modules` | Hash of `project_lockfile` -- only when `project_lockfile` is set |
-| Obsidian vault (`.pi-vault/`) | Vault repo + commit SHA |
+| Obsidian vault (`/home/runner/obi-vaults/{vault-name}/`) | Vault repo + commit SHA |
 
 On a warm run (same commit, same deps), only the dora agent itself runs -- all installs and indexing are skipped.
 
