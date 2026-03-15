@@ -13,6 +13,8 @@ export type BaseConfig = {
   apiKey: string;
   workingDir: string;
   actionPath: string;
+  obsidianVaultName: string;
+  obsidianPrompt: string;
 };
 
 export type ReviewConfig = BaseConfig & {

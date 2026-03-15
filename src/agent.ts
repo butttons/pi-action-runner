@@ -81,6 +81,23 @@ export function loadDoraSkill({ workingDir }: { workingDir: string }): Skill | n
   };
 }
 
+export function loadObiSkill({ actionPath }: { actionPath: string }): Skill | null {
+  const skillPath = join(actionPath, 'skills', 'obi', 'SKILL.md');
+  if (!existsSync(skillPath)) {
+    core.warning('Obi SKILL.md not found -- agent will proceed without obi skill guidance');
+    return null;
+  }
+  return {
+    name: 'obi',
+    description:
+      'Query Obsidian vaults via obi CLI for documentation, architecture notes, and project conventions',
+    filePath: skillPath,
+    baseDir: join(actionPath, 'skills', 'obi'),
+    source: 'action',
+    disableModelInvocation: false,
+  };
+}
+
 export async function runAgent({
   config,
   systemPrompt,

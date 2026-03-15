@@ -144,6 +144,9 @@ Thinking about moving all rendering to the edge.
 | `system_prompt` | -- | Path to a custom system prompt for PR reviews (relative to repo root). |
 | `review_template` | -- | Path to a custom review output template (relative to repo root). |
 | `extra_prompt` | -- | Additional instructions appended to every review prompt. |
+| `obsidian_vault_repo` | -- | GitHub repo containing an Obsidian vault (e.g., `owner/repo`). |
+| `obsidian_token` | -- | GitHub token for private vault repos (defaults to `GITHUB_TOKEN`). |
+| `obsidian_prompt` | -- | Additional instructions for using the obsidian vault via `obi` CLI. |
 
 Either `api_key` or `pi_auth` must be provided. When both are set, `api_key` takes precedence.
 
@@ -198,6 +201,27 @@ Uses `git diff`, `grep`, `find`, and direct file reading only. Faster setup, no 
     use_dora: 'false'
 ```
 
+### With Obsidian vault
+
+Connect an Obsidian vault from another repo to give the agent access to documentation and architecture notes:
+
+```yaml
+- uses: butttons/pi-action-runner@main
+  with:
+    api_key: ${{ secrets.API_KEY }}
+    obsidian_vault_repo: 'myorg/documentation'
+    obsidian_token: ${{ secrets.VAULT_TOKEN }}  # for private vault repos
+    obsidian_prompt: |
+      Before making architectural decisions, check the vault for documented patterns.
+      Search for relevant docs using `obi search` and read the full notes.
+```
+
+The agent can use the `obi` CLI to query the vault:
+- `obi map --vault "VaultName"` - see vault structure
+- `obi read "path/to/note.md" --vault "VaultName"` - read specific notes
+- `obi search "term" --vault "VaultName"` - search content
+- `obi query --type worker --vault "VaultName"` - filter by frontmatter type
+
 ### Different model
 
 ```yaml
@@ -250,6 +274,7 @@ The action caches the following automatically:
 | dora + scip globals (`~/.bun`) | dora version + scip install command |
 | Dora index (`.dora/`) | Commit SHA -- busted on every new commit |
 | Project `node_modules` | Hash of `project_lockfile` -- only when `project_lockfile` is set |
+| Obsidian vault (`.pi-vault/`) | Vault repo + commit SHA |
 
 On a warm run (same commit, same deps), only the dora agent itself runs -- all installs and indexing are skipped.
 

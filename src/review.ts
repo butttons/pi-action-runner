@@ -1,5 +1,5 @@
 import * as core from '@actions/core';
-import { runAgent, loadDoraSkill } from './agent.js';
+import { runAgent, loadDoraSkill, loadObiSkill } from './agent.js';
 import { buildReviewSystemPrompt, loadReviewTemplate } from './prompt.js';
 import type { ReviewConfig } from './types.js';
 
@@ -19,6 +19,8 @@ export async function runReview({ config }: { config: ReviewConfig }): Promise<s
     reviewTemplate,
     workingDir: config.workingDir,
     actionPath: config.actionPath,
+    obsidianVaultName: config.obsidianVaultName,
+    obsidianPrompt: config.obsidianPrompt,
   });
 
   const skills = [];
@@ -30,6 +32,14 @@ export async function runReview({ config }: { config: ReviewConfig }): Promise<s
     }
   } else {
     core.info('Dora disabled -- skipping skill load');
+  }
+
+  if (config.obsidianVaultName) {
+    const obiSkill = loadObiSkill({ actionPath: config.actionPath });
+    if (obiSkill) {
+      skills.push(obiSkill);
+      core.info('Loaded obi skill');
+    }
   }
 
   return runAgent({

@@ -30,6 +30,8 @@ export function buildReviewSystemPrompt({
   reviewTemplate,
   workingDir,
   actionPath,
+  obsidianVaultName,
+  obsidianPrompt,
 }: {
   baseBranch: string;
   message: string;
@@ -39,6 +41,8 @@ export function buildReviewSystemPrompt({
   reviewTemplate: string;
   workingDir: string;
   actionPath: string;
+  obsidianVaultName: string;
+  obsidianPrompt: string;
 }): string {
   let basePrompt: string;
 
@@ -61,6 +65,12 @@ export function buildReviewSystemPrompt({
     sections.push('', '## Additional Context', extraPrompt);
   }
 
+  maybeAddObsidianSection({
+    sections,
+    vaultName: obsidianVaultName,
+    prompt: obsidianPrompt,
+  });
+
   sections.push(
     '',
     '## Output',
@@ -71,6 +81,38 @@ export function buildReviewSystemPrompt({
   );
 
   return sections.join('\n');
+}
+
+function maybeAddObsidianSection({
+  sections,
+  vaultName,
+  prompt,
+}: {
+  sections: string[];
+  vaultName: string;
+  prompt: string;
+}): void {
+  if (!vaultName) return;
+
+  sections.push(
+    '',
+    '## Obsidian Vault Access',
+    '',
+    `You have access to an Obsidian vault named: ${vaultName}`,
+    '',
+    'Use the `obi` CLI tool to query documentation, architecture notes, and project conventions.',
+    'Common commands:',
+    `- \`obi map --vault "${vaultName}"\` - see vault structure`,
+    `- \`obi read "path/to/note.md" --vault "${vaultName}"\` - read a note`,
+    `- \`obi search "term" --vault "${vaultName}"\` - search content`,
+    `- \`obi query --type worker --vault "${vaultName}"\` - filter by frontmatter type`,
+    '',
+    `Always use --vault "${vaultName}" in obi commands.`,
+  );
+
+  if (prompt) {
+    sections.push('', '## Vault Usage Instructions', prompt);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -123,6 +165,12 @@ export function buildInlineCommentSystemPrompt({
     sections.push('', '## Additional instructions from reviewer', config.message);
   }
 
+  maybeAddObsidianSection({
+    sections,
+    vaultName: config.obsidianVaultName,
+    prompt: config.obsidianPrompt,
+  });
+
   return sections.join('\n');
 }
 
@@ -166,6 +214,12 @@ export function buildIssueSystemPrompt({ config }: { config: IssueConfig }): str
   if (config.message) {
     sections.push('', '## Additional instructions', config.message);
   }
+
+  maybeAddObsidianSection({
+    sections,
+    vaultName: config.obsidianVaultName,
+    prompt: config.obsidianPrompt,
+  });
 
   sections.push(
     '',
@@ -218,6 +272,12 @@ export function buildDiscussionSystemPrompt({ config }: { config: DiscussionConf
   if (config.message) {
     sections.push('', '## Additional instructions', config.message);
   }
+
+  maybeAddObsidianSection({
+    sections,
+    vaultName: config.obsidianVaultName,
+    prompt: config.obsidianPrompt,
+  });
 
   sections.push(
     '',

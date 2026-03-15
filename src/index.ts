@@ -23,12 +23,14 @@ function getBaseInputs() {
   const apiKey = core.getInput('api_key') || '';
   const actionPath = core.getInput('action_path') || '';
   const workingDir = process.env.GITHUB_WORKSPACE ?? process.cwd();
+  const obsidianVaultName = process.env.INPUT_OBSIDIAN_VAULT_NAME || '';
+  const obsidianPrompt = process.env.INPUT_OBSIDIAN_PROMPT || '';
 
   if (!apiKey && !core.getInput('pi_auth')) {
     throw new Error('Either api_key or pi_auth must be provided');
   }
 
-  return { token, model, apiKey, actionPath, workingDir };
+  return { token, model, apiKey, actionPath, workingDir, obsidianVaultName, obsidianPrompt };
 }
 
 function isOwnerOrMember({ association }: { association: string }): boolean {
@@ -53,7 +55,7 @@ async function handlePrComment({ octokit }: { octokit: Octokit }): Promise<void>
     return;
   }
 
-  const { token, model, apiKey, actionPath, workingDir } = getBaseInputs();
+  const { token, model, apiKey, actionPath, workingDir, obsidianVaultName, obsidianPrompt } = getBaseInputs();
   const octokit2 = github.getOctokit(token);
   const ctx = github.context;
 
@@ -90,6 +92,8 @@ async function handlePrComment({ octokit }: { octokit: Octokit }): Promise<void>
       systemPromptPath: core.getInput('system_prompt') || '',
       reviewTemplatePath: core.getInput('review_template') || '',
       actionPath,
+      obsidianVaultName,
+      obsidianPrompt,
     };
 
     const body = await runReview({ config: reviewConfig });
@@ -137,7 +141,7 @@ async function handleInlineComment({ octokit }: { octokit: Octokit }): Promise<v
     return;
   }
 
-  const { token, model, apiKey, actionPath, workingDir } = getBaseInputs();
+  const { token, model, apiKey, actionPath, workingDir, obsidianVaultName, obsidianPrompt } = getBaseInputs();
   const octokit2 = github.getOctokit(token);
   const ctx = github.context;
 
@@ -169,6 +173,8 @@ async function handleInlineComment({ octokit }: { octokit: Octokit }): Promise<v
     apiKey,
     workingDir,
     actionPath,
+    obsidianVaultName,
+    obsidianPrompt,
   };
 
   core.info(`Trigger: comment | file: ${inlineConfig.filePath} | message: ${trigger.message || '(none)'}`);
@@ -225,7 +231,7 @@ async function handleIssue({ octokit }: { octokit: Octokit }): Promise<void> {
     return;
   }
 
-  const { token, model, apiKey, actionPath, workingDir } = getBaseInputs();
+  const { token, model, apiKey, actionPath, workingDir, obsidianVaultName, obsidianPrompt } = getBaseInputs();
   const octokit2 = github.getOctokit(token);
 
   // React on the comment or the issue itself
@@ -250,6 +256,8 @@ async function handleIssue({ octokit }: { octokit: Octokit }): Promise<void> {
     apiKey,
     workingDir,
     actionPath,
+    obsidianVaultName,
+    obsidianPrompt,
   };
 
   core.info(`Trigger: issue #${issueConfig.issueNumber} | message: ${trigger.message || '(none)'}`);
@@ -293,7 +301,7 @@ async function handleDiscussion({ octokit }: { octokit: Octokit }): Promise<void
     return;
   }
 
-  const { token, model, apiKey, actionPath, workingDir } = getBaseInputs();
+  const { token, model, apiKey, actionPath, workingDir, obsidianVaultName, obsidianPrompt } = getBaseInputs();
   const octokit2 = github.getOctokit(token);
 
   const discussion = payload.discussion;
@@ -311,6 +319,8 @@ async function handleDiscussion({ octokit }: { octokit: Octokit }): Promise<void
     apiKey,
     workingDir,
     actionPath,
+    obsidianVaultName,
+    obsidianPrompt,
   };
 
   core.info(`Trigger: discussion #${discussionConfig.discussionNumber} | message: ${trigger.message || '(none)'}`);

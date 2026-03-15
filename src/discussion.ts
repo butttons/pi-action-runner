@@ -1,4 +1,5 @@
-import { runAgent } from './agent.js';
+import * as core from '@actions/core';
+import { runAgent, loadObiSkill } from './agent.js';
 import { buildDiscussionSystemPrompt, buildDiscussionPrompt } from './prompt.js';
 import type { DiscussionConfig } from './types.js';
 
@@ -6,5 +7,14 @@ export async function runDiscussion({ config }: { config: DiscussionConfig }): P
   const systemPrompt = buildDiscussionSystemPrompt({ config });
   const userPrompt = buildDiscussionPrompt({ config });
 
-  return runAgent({ config, systemPrompt, userPrompt });
+  const skills = [];
+  if (config.obsidianVaultName) {
+    const obiSkill = loadObiSkill({ actionPath: config.actionPath });
+    if (obiSkill) {
+      skills.push(obiSkill);
+      core.info('Loaded obi skill');
+    }
+  }
+
+  return runAgent({ config, systemPrompt, userPrompt, skills });
 }

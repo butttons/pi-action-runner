@@ -51,6 +51,18 @@ inputs:
     description: 'Additional instructions to append to review prompt'
     required: false
     default: ''
+  obsidian_vault_repo:
+    description: 'GitHub repo containing the Obsidian vault (e.g., owner/repo)'
+    required: false
+    default: ''
+  obsidian_token:
+    description: 'GitHub token for cloning private vault repo (defaults to GITHUB_TOKEN for public repos)'
+    required: false
+    default: ''
+  obsidian_prompt:
+    description: 'Additional instructions for using obsidian/obi CLI'
+    required: false
+    default: ''
 
 runs:
   using: 'composite'
@@ -159,6 +171,62 @@ runs:
         ${{ inputs.dora_index_command }}
         dora status
 
+    - name: Get vault commit SHA
+      if: inputs.obsidian_vault_repo != ''
+      id: vault-sha
+      shell: bash
+      env:
+        VAULT_TOKEN: ${{ inputs.obsidian_token || github.token }}
+      run: |
+        SHA=$(curl -s -H "Authorization: token $VAULT_TOKEN" \
+          "https://api.github.com/repos/${{ inputs.obsidian_vault_repo }}/commits/HEAD" | \
+          jq -r '.sha')
+        echo "sha=$SHA" >> $GITHUB_OUTPUT
+        echo "Vault repo commit: $SHA"
+
+    - name: Parse vault name
+      if: inputs.obsidian_vault_repo != ''
+      id: vault-name
+      shell: bash
+      run: |
+        VAULT_NAME=$(echo "${{ inputs.obsidian_vault_repo }}" | cut -d'/' -f2)
+        echo "name=$VAULT_NAME" >> $GITHUB_OUTPUT
+        echo "Vault name: $VAULT_NAME"
+
+    - name: Restore vault cache
+      if: inputs.obsidian_vault_repo != ''
+      id: cache-vault
+      uses: actions/cache@v4
+      with:
+        path: ~/obi-vaults/${{ steps.vault-name.outputs.name }}
+        key: pi-vault-${{ runner.os }}-${{ inputs.obsidian_vault_repo }}-${{ steps.vault-sha.outputs.sha }}
+
+    - name: Clone Obsidian vault
+      if: inputs.obsidian_vault_repo != '' && steps.cache-vault.outputs.cache-hit != 'true'
+      shell: bash
+      env:
+        VAULT_TOKEN: ${{ inputs.obsidian_token || github.token }}
+        VAULT_NAME: ${{ steps.vault-name.outputs.name }}
+      run: |
+        mkdir -p ~/obi-vaults
+        git clone --depth 1 "https://$VAULT_TOKEN@github.com/${{ inputs.obsidian_vault_repo }}.git" ~/obi-vaults/${VAULT_NAME}
+        echo "Vault cloned to: ~/obi-vaults/${VAULT_NAME}"
+
+    - name: Install obi
+      if: inputs.obsidian_vault_repo != ''
+      shell: bash
+      run: bun add -g @butttons/obi
+
+    - name: Verify obi
+      if: inputs.obsidian_vault_repo != ''
+      shell: bash
+      env:
+        OBI_VAULTS_PATH: ~/obi-vaults
+        VAULT_NAME: ${{ steps.vault-name.outputs.name }}
+      run: |
+        obi vaults
+        obi map --vault "$VAULT_NAME"
+
     - name: Run pi
       shell: bash
       env:
@@ -171,4 +239,7 @@ runs:
         INPUT_REVIEW_TEMPLATE: ${{ inputs.review_template }}
         INPUT_EXTRA_PROMPT: ${{ inputs.extra_prompt }}
         INPUT_ACTION_PATH: ${{ github.action_path }}
+        INPUT_OBSIDIAN_VAULT_NAME: ${{ steps.vault-name.outputs.name }}
+        INPUT_OBSIDIAN_PROMPT: ${{ inputs.obsidian_prompt }}
+        OBI_VAULTS_PATH: ~/obi-vaults
       run: bun run ${{ github.action_path }}/src/index.ts
