@@ -217,10 +217,11 @@ runs:
       env:
         VAULT_TOKEN: ${{ inputs.obsidian_token || github.token }}
         VAULT_NAME: ${{ steps.vault-name.outputs.name }}
+        OBI_HOME: ${{ steps.vault-name.outputs.home }}
       run: |
-        mkdir -p $HOME/obi-vaults
-        git clone --depth 1 "https://$VAULT_TOKEN@github.com/${{ inputs.obsidian_vault_repo }}.git" $HOME/obi-vaults/${VAULT_NAME}
-        echo "Vault cloned to: $HOME/obi-vaults/${VAULT_NAME}"
+        mkdir -p $OBI_HOME/obi-vaults
+        git clone --depth 1 "https://$VAULT_TOKEN@github.com/${{ inputs.obsidian_vault_repo }}.git" $OBI_HOME/obi-vaults/${VAULT_NAME}
+        echo "Vault cloned to: $OBI_HOME/obi-vaults/${VAULT_NAME}"
 
     - name: Install obi
       if: inputs.obsidian_vault_repo != ''
@@ -231,7 +232,7 @@ runs:
       if: inputs.obsidian_vault_repo != ''
       shell: bash
       env:
-        OBI_VAULTS_PATH: $HOME/obi-vaults
+        OBI_VAULTS_PATH: ${{ steps.vault-name.outputs.home }}/obi-vaults
         VAULT_NAME: ${{ steps.vault-name.outputs.name }}
       run: |
         obi vaults
@@ -251,5 +252,5 @@ runs:
         INPUT_ACTION_PATH: ${{ github.action_path }}
         INPUT_OBSIDIAN_VAULT_NAME: ${{ steps.vault-name.outputs.name }}
         INPUT_OBSIDIAN_PROMPT: ${{ inputs.obsidian_prompt }}
-        OBI_VAULTS_PATH: $HOME/obi-vaults
+        OBI_VAULTS_PATH: ${{ steps.vault-name.outputs.home }}/obi-vaults
       run: bun run ${{ github.action_path }}/src/index.ts
