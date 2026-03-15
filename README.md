@@ -145,6 +145,7 @@ Thinking about moving all rendering to the edge.
 | `review_template` | -- | Path to a custom review output template (relative to repo root). |
 | `extra_prompt` | -- | Additional instructions appended to every review prompt. |
 | `obsidian_vault_repo` | -- | GitHub repo containing an Obsidian vault (e.g., `owner/repo`). |
+| `obsidian_vault_name` | -- | Vault name for `obi --vault` flag (defaults to repo name). |
 | `obsidian_token` | -- | GitHub token for private vault repos (defaults to `GITHUB_TOKEN`). |
 | `obsidian_prompt` | -- | Additional instructions for using the obsidian vault via `obi` CLI. |
 

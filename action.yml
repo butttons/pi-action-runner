@@ -55,6 +55,10 @@ inputs:
     description: 'GitHub repo containing the Obsidian vault (e.g., owner/repo)'
     required: false
     default: ''
+  obsidian_vault_name:
+    description: 'Name of the vault for obi --vault flag (defaults to repo name)'
+    required: false
+    default: ''
   obsidian_token:
     description: 'GitHub token for cloning private vault repo (defaults to GITHUB_TOKEN for public repos)'
     required: false
@@ -189,7 +193,11 @@ runs:
       id: vault-name
       shell: bash
       run: |
-        VAULT_NAME=$(echo "${{ inputs.obsidian_vault_repo }}" | cut -d'/' -f2)
+        if [ -n "${{ inputs.obsidian_vault_name }}" ]; then
+          VAULT_NAME="${{ inputs.obsidian_vault_name }}"
+        else
+          VAULT_NAME=$(echo "${{ inputs.obsidian_vault_repo }}" | cut -d'/' -f2)
+        fi
         echo "name=$VAULT_NAME" >> $GITHUB_OUTPUT
         echo "Vault name: $VAULT_NAME"
 
