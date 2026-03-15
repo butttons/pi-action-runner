@@ -199,14 +199,16 @@ runs:
           VAULT_NAME=$(echo "${{ inputs.obsidian_vault_repo }}" | cut -d'/' -f2)
         fi
         echo "name=$VAULT_NAME" >> $GITHUB_OUTPUT
+        echo "home=$HOME" >> $GITHUB_OUTPUT
         echo "Vault name: $VAULT_NAME"
+        echo "Home: $HOME"
 
     - name: Restore vault cache
       if: inputs.obsidian_vault_repo != ''
       id: cache-vault
       uses: actions/cache@v4
       with:
-        path: ~/obi-vaults/${{ steps.vault-name.outputs.name }}
+        path: ${{ steps.vault-name.outputs.home }}/obi-vaults/${{ steps.vault-name.outputs.name }}
         key: pi-vault-${{ runner.os }}-${{ inputs.obsidian_vault_repo }}-${{ steps.vault-sha.outputs.sha }}
 
     - name: Clone Obsidian vault
@@ -216,9 +218,9 @@ runs:
         VAULT_TOKEN: ${{ inputs.obsidian_token || github.token }}
         VAULT_NAME: ${{ steps.vault-name.outputs.name }}
       run: |
-        mkdir -p ~/obi-vaults
-        git clone --depth 1 "https://$VAULT_TOKEN@github.com/${{ inputs.obsidian_vault_repo }}.git" ~/obi-vaults/${VAULT_NAME}
-        echo "Vault cloned to: ~/obi-vaults/${VAULT_NAME}"
+        mkdir -p $HOME/obi-vaults
+        git clone --depth 1 "https://$VAULT_TOKEN@github.com/${{ inputs.obsidian_vault_repo }}.git" $HOME/obi-vaults/${VAULT_NAME}
+        echo "Vault cloned to: $HOME/obi-vaults/${VAULT_NAME}"
 
     - name: Install obi
       if: inputs.obsidian_vault_repo != ''
@@ -229,7 +231,7 @@ runs:
       if: inputs.obsidian_vault_repo != ''
       shell: bash
       env:
-        OBI_VAULTS_PATH: ~/obi-vaults
+        OBI_VAULTS_PATH: $HOME/obi-vaults
         VAULT_NAME: ${{ steps.vault-name.outputs.name }}
       run: |
         obi vaults
@@ -249,5 +251,5 @@ runs:
         INPUT_ACTION_PATH: ${{ github.action_path }}
         INPUT_OBSIDIAN_VAULT_NAME: ${{ steps.vault-name.outputs.name }}
         INPUT_OBSIDIAN_PROMPT: ${{ inputs.obsidian_prompt }}
-        OBI_VAULTS_PATH: ~/obi-vaults
+        OBI_VAULTS_PATH: $HOME/obi-vaults
       run: bun run ${{ github.action_path }}/src/index.ts
