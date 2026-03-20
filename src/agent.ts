@@ -115,13 +115,11 @@ export async function runAgent({
   const model = modelRegistry.find(providerName, modelId);
   if (!model) throw new Error(`Model not found: ${providerName}/${modelId}`);
 
-  const settingsManager = SettingsManager.inMemory({
-    compaction: { enabled: false },
-    retry: { enabled: true, maxRetries: 3 },
-  });
-
   const agentDir = getAgentDir();
   core.info(`Agent directory: ${agentDir}`);
+
+  // Use SettingsManager.create to read from ~/.pi/agent/settings.json
+  const settingsManager = SettingsManager.create(config.workingDir, agentDir);
   
   const resourceLoader = new DefaultResourceLoader({
     cwd: config.workingDir,
