@@ -67,6 +67,10 @@ inputs:
     description: 'Additional instructions for using obsidian/obi CLI'
     required: false
     default: ''
+  exa_api_key:
+    description: 'Exa AI API key for web search functionality'
+    required: false
+    default: ''
 
 runs:
   using: 'composite'
@@ -253,4 +257,5 @@ runs:
         INPUT_OBSIDIAN_VAULT_NAME: ${{ steps.vault-name.outputs.name }}
         INPUT_OBSIDIAN_PROMPT: ${{ inputs.obsidian_prompt }}
         OBI_VAULTS_PATH: ${{ steps.vault-name.outputs.home }}/obi-vaults
+        EXA_API_KEY: ${{ inputs.exa_api_key }}
       run: bun run ${{ github.action_path }}/src/index.ts

@@ -4,13 +4,13 @@ import { join } from 'path';
 import {
   AuthStorage,
   createAgentSession,
-  createExtensionRuntime,
   createBashTool,
   createReadTool,
+  DefaultResourceLoader,
+  getAgentDir,
   ModelRegistry,
   SessionManager,
   SettingsManager,
-  type ResourceLoader,
   type Skill,
 } from '@mariozechner/pi-coding-agent';
 import type { BaseConfig } from './types.js';
@@ -120,18 +120,14 @@ export async function runAgent({
     retry: { enabled: true, maxRetries: 3 },
   });
 
-  const resourceLoader: ResourceLoader = {
-    getExtensions: () => ({ extensions: [], errors: [], runtime: createExtensionRuntime() }),
-    getSkills: () => ({ skills, diagnostics: [] }),
-    getPrompts: () => ({ prompts: [], diagnostics: [] }),
-    getThemes: () => ({ themes: [], diagnostics: [] }),
-    getAgentsFiles: () => ({ agentsFiles: [] }),
-    getSystemPrompt: () => systemPrompt,
-    getAppendSystemPrompt: () => [],
-    getPathMetadata: () => new Map(),
-    extendResources: () => {},
-    reload: async () => {},
-  };
+  const agentDir = getAgentDir();
+  const resourceLoader = new DefaultResourceLoader({
+    cwd: config.workingDir,
+    agentDir,
+    settingsManager,
+    systemPrompt,
+  });
+  await resourceLoader.reload();
 
   const { session } = await createAgentSession({
     cwd: config.workingDir,
