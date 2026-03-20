@@ -12,6 +12,7 @@ import {
   SessionManager,
   SettingsManager,
   type Skill,
+  type ResourceDiagnostic,
 } from '@mariozechner/pi-coding-agent';
 import type { BaseConfig } from './types.js';
 
@@ -120,12 +121,22 @@ export async function runAgent({
 
   // Use SettingsManager.create to read from ~/.pi/agent/settings.json
   const settingsManager = SettingsManager.create(config.workingDir, agentDir);
-  
+
+  // Merge manually loaded skills (dora, obi) with package skills
+  const skillsOverride = (result: { skills: Skill[]; diagnostics: ResourceDiagnostic[] }) => {
+    const mergedSkills = [...result.skills, ...skills];
+    if (skills.length > 0) {
+      core.info(`Merged ${skills.length} manually loaded skills with ${result.skills.length} package skills`);
+    }
+    return { skills: mergedSkills, diagnostics: result.diagnostics };
+  };
+
   const resourceLoader = new DefaultResourceLoader({
     cwd: config.workingDir,
     agentDir,
     settingsManager,
     systemPrompt,
+    skillsOverride,
   });
   await resourceLoader.reload();
 
@@ -144,6 +155,15 @@ export async function runAgent({
   }
   if (extensionsResult.errors.length > 0) {
     core.warning(`Extension errors: ${extensionsResult.errors.map(e => e.error).join(', ')}`);
+  }
+
+  // Log all skills (manual + packages)
+  const allSkills = resourceLoader.getSkills().skills;
+  if (allSkills.length > 0) {
+    core.info(`Total skills available: ${allSkills.length}`);
+    for (const skill of allSkills) {
+      core.info(`  - ${skill.name}: ${skill.description.slice(0, 80)}...`);
+    }
   }
 
   const { session } = await createAgentSession({
