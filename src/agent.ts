@@ -121,6 +121,8 @@ export async function runAgent({
   });
 
   const agentDir = getAgentDir();
+  core.info(`Agent directory: ${agentDir}`);
+  
   const resourceLoader = new DefaultResourceLoader({
     cwd: config.workingDir,
     agentDir,
@@ -128,6 +130,23 @@ export async function runAgent({
     systemPrompt,
   });
   await resourceLoader.reload();
+
+  // Check loaded extensions
+  const extensionsResult = resourceLoader.getExtensions();
+  if (extensionsResult.extensions.length > 0) {
+    core.info(`Loaded ${extensionsResult.extensions.length} extensions:`);
+    for (const ext of extensionsResult.extensions) {
+      core.info(`  - ${ext.path} (${ext.tools.size} tools)`);
+      for (const toolName of ext.tools.keys()) {
+        core.info(`      * ${toolName}`);
+      }
+    }
+  } else {
+    core.info('No extensions loaded');
+  }
+  if (extensionsResult.errors.length > 0) {
+    core.warning(`Extension errors: ${extensionsResult.errors.map(e => e.error).join(', ')}`);
+  }
 
   const { session } = await createAgentSession({
     cwd: config.workingDir,
@@ -150,6 +169,7 @@ export async function runAgent({
         core.startGroup(`Tool: ${event.toolName}`);
         if (event.toolName === 'bash') core.info(`Command: ${formatArgs({ args: event.args })}`);
         else if (event.toolName === 'read') core.info(`File: ${formatArgs({ args: event.args })}`);
+        else core.info(`Args: ${formatArgs({ args: event.args })}`);
         break;
       case 'tool_execution_end':
         if (event.isError) core.warning(`Tool ${event.toolName} failed`);
