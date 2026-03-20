@@ -148,6 +148,7 @@ Thinking about moving all rendering to the edge.
 | `obsidian_vault_name` | -- | Vault name for `obi --vault` flag (defaults to repo name). |
 | `obsidian_token` | -- | GitHub token for private vault repos (defaults to `GITHUB_TOKEN`). |
 | `obsidian_prompt` | -- | Additional instructions for using the obsidian vault via `obi` CLI. |
+| `exa_api_key` | -- | Exa AI API key for web search via the `exa_search` tool. |
 
 Either `api_key` or `pi_auth` must be provided. When both are set, `api_key` takes precedence.
 
@@ -229,6 +230,57 @@ The agent can use the `obi` CLI to query the vault:
 - `obi search "term" --vault "VaultName"` - search content
 - `obi query --type worker --vault "VaultName"` - filter by frontmatter type
 
+### With extensions (exa-search, etc.)
+
+Extensions add custom tools to the agent. The action supports any pi-compatible extension.
+
+**Available extensions from [pi-kit](https://github.com/butttons/pi-kit):**
+
+| Extension | Tool | Description | Required Secret |
+|-----------|------|-------------|-----------------|
+| `exa-search` | `exa_search` | Web search via Exa AI | `EXA_API_KEY` |
+
+**Setup:**
+
+1. Add the extension's API key as a GitHub secret (e.g., `EXA_API_KEY` for exa-search)
+2. Configure your workflow to clone the extensions and create a pi settings file:
+
+```yaml
+- name: Setup pi extensions
+  shell: bash
+  run: |
+    mkdir -p "$HOME/.pi/agent/git/github.com/butttons"
+    git clone --depth 1 "https://github.com/butttons/pi-kit.git" "$HOME/.pi/agent/git/github.com/butttons/pi-kit"
+    cat > "$HOME/.pi/agent/settings.json" << 'EOF'
+    {
+      "packages": [
+        {
+          "source": "git:github.com/butttons/pi-kit"
+        }
+      ]
+    }
+    EOF
+
+- uses: butttons/pi-action-runner@main
+  with:
+    api_key: ${{ secrets.ANTHROPIC_KEY }}
+    exa_api_key: ${{ secrets.EXA_API_KEY }}
+```
+
+**Usage in prompts:**
+
+Once configured, the agent can use extension tools:
+
+```
+@pi search for the latest React best practices and compare them to our codebase
+```
+
+```
+@pi use exa_search to find documentation for the error handling pattern we're using
+```
+
+**Caching:** Extensions are cached by commit SHA for fast warm runs.
+
 ### Different model
 
 ```yaml
@@ -282,6 +334,7 @@ The action caches the following automatically:
 | Dora index (`.dora/`) | Commit SHA -- busted on every new commit |
 | Project `node_modules` | Hash of `project_lockfile` -- only when `project_lockfile` is set |
 | Obsidian vault (`/home/runner/obi-vaults/{vault-name}/`) | Vault repo + commit SHA |
+| pi-kit extensions (`~/.pi/agent/git/github.com/butttons/pi-kit`) | pi-kit commit SHA |
 
 On a warm run (same commit, same deps), only the dora agent itself runs -- all installs and indexing are skipped.
 
@@ -294,8 +347,9 @@ On a warm run (same commit, same deps), only the dora agent itself runs -- all i
    - `issues` / `issue_comment` on a plain issue → explores codebase, replies in the issue
    - `discussion` / `discussion_comment` → explores codebase, replies in the discussion
 3. If dora is enabled: installs dora + SCIP indexer (cached), runs `dora init` + `dora index` (cached per commit).
-4. Runs the pi agent with bash and read tools. The agent uses dora commands, `git diff`, `grep`, `find`, and direct file reading to gather context.
-5. Posts the response via the appropriate GitHub API (REST for PRs/issues, GraphQL for discussions).
+4. Loads extensions from `~/.pi/agent/settings.json` if configured (cached by commit SHA).
+5. Runs the pi agent with bash, read, and any extension tools. The agent uses dora commands, extension tools (like `exa_search`), `git diff`, `grep`, `find`, and direct file reading to gather context.
+6. Posts the response via the appropriate GitHub API (REST for PRs/issues, GraphQL for discussions).
 
 ## Requirements
 
