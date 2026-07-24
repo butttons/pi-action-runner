@@ -10,7 +10,7 @@
     "@actions/core": "^1.11.1",
     "@actions/exec": "^1.1.1",
     "@actions/github": "^6.0.0",
-    "@earendil-works/pi-coding-agent": "^0.79.7"
+    "@earendil-works/pi-coding-agent": "^0.82.0"
   },
   "devDependencies": {
     "@types/bun": "^1.2.0",
