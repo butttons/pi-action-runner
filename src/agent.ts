@@ -2,13 +2,12 @@ import * as core from '@actions/core';
 import { existsSync } from 'fs';
 import { join } from 'path';
 import {
-  AuthStorage,
   createAgentSession,
   createBashTool,
   createReadTool,
   DefaultResourceLoader,
   getAgentDir,
-  ModelRegistry,
+  ModelRuntime,
   SessionManager,
   SettingsManager,
   type Skill,
@@ -120,12 +119,11 @@ export async function runAgent({
   const [providerName, modelId] = parseModelString({ model: config.model });
   core.info(`Using model: ${providerName}/${modelId}`);
 
-  const authStorage = config.apiKey
-    ? AuthStorage.inMemory({ [providerName]: { type: 'api_key', key: config.apiKey } })
-    : AuthStorage.create();
-
-  const modelRegistry = ModelRegistry.inMemory(authStorage);
-  const model = modelRegistry.find(providerName, modelId);
+  const modelRuntime = await ModelRuntime.create();
+  if (config.apiKey) {
+    await modelRuntime.setRuntimeApiKey(providerName, config.apiKey);
+  }
+  const model = modelRuntime.getModel(providerName, modelId);
   if (!model) throw new Error(`Model not found: ${providerName}/${modelId}`);
 
   const agentDir = getAgentDir();
@@ -182,8 +180,7 @@ export async function runAgent({
     cwd: config.workingDir,
     model,
     thinkingLevel: 'medium',
-    authStorage,
-    modelRegistry,
+    modelRuntime,
     resourceLoader,
     tools: ['read', 'bash'],
     sessionManager: SessionManager.inMemory(),
