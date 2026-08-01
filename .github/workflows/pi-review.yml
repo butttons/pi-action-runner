@@ -1,0 +1,116 @@
+name: Pi
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  issues:
+    types: [opened, edited]
+  discussion:
+    types: [created, edited]
+  discussion_comment:
+    types: [created]
+
+jobs:
+  pi:
+    if: |
+      contains(github.event.comment.body, '@pi') ||
+      contains(github.event.issue.body, '@pi') ||
+      contains(github.event.discussion.body, '@pi')
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
+      pull-requests: write
+      issues: write
+      discussions: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: >-
+            ${{
+              (github.event.issue.pull_request && format('refs/pull/{0}/merge', github.event.issue.number)) ||
+              github.sha
+            }}
+
+      - name: Get pi-kit commit SHA
+        id: pi-kit-sha
+        shell: bash
+        run: |
+          SHA=$(curl -s "https://api.github.com/repos/butttons/pi-kit/commits/HEAD" | jq -r '.sha')
+          echo "sha=$SHA" >> $GITHUB_OUTPUT
+          echo "pi-kit commit: $SHA"
+
+      - name: Restore pi-kit cache
+        id: cache-pi-kit
+        uses: actions/cache@v4
+        with:
+          path: ~/.pi/agent/git/github.com/butttons/pi-kit
+          key: pi-kit-${{ runner.os }}-${{ steps.pi-kit-sha.outputs.sha }}
+
+      - name: Setup pi extensions
+        if: steps.cache-pi-kit.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          mkdir -p "$HOME/.pi/agent/git/github.com/butttons"
+          git clone --depth 1 "https://github.com/butttons/pi-kit.git" "$HOME/.pi/agent/git/github.com/butttons/pi-kit"
+          echo "Pi extensions cloned"
+
+      - name: Configure pi settings
+        shell: bash
+        run: |
+          cat > "$HOME/.pi/agent/settings.json" << 'EOF'
+          {
+            "packages": [
+              {
+                "source": "git:github.com/butttons/pi-kit",
+                "extensions": [
+                  "-extensions/pencil/index.ts",
+                  "-extensions/verbosity-leash.ts",
+                  "-extensions/auto-commit-nudge.ts",
+                  "-extensions/explore-guard.ts"
+                ]
+              }
+            ]
+          }
+          EOF
+          echo "Pi settings configured"
+
+      - uses: ./
+        env:
+          POUCH_URL: ${{ secrets.POUCH_URL }}
+          POUCH_API_KEY: ${{ secrets.POUCH_API_KEY }}
+        with:
+          pi_auth: ${{ secrets.PI_AUTH }}
+          pi_model: 'kimi-coding/k3'
+          project_lockfile: 'bun.lock'
+          dora_pre_index: |
+            bun install --frozen-lockfile
+          extra_prompt: |
+            ## Review Memory (pouch CMS)
+
+            You have persistent memory across runs via a pouch CMS HTTP API. `POUCH_URL` and `POUCH_API_KEY` are set in your environment. Authenticate with the header `Authorization: Bearer $POUCH_API_KEY`. Errors are always JSON. Use `curl --globoff` for filtered GETs (brackets are glob chars). Rate limit: 100 req / 10 s.
+
+            Two collections:
+
+            - `reviews` — one record per review run. Fields: `repo` (string, e.g. "butttons/pi-action-runner"), `pr` (integer), `sha` (head SHA reviewed), `runId`, `trigger` (the reviewer instruction text), `model`, `summary` (one sentence), `risk` (LOW|MEDIUM|HIGH), `review` (the full markdown you posted).
+            - `findings` — one record per issue raised. Fields: `repo`, `pr`, `reviewId` (id of the parent `reviews` record), `severity` (critical|warning|nit), `file`, `line` (integer), `description`, `state` (open|addressed|wontfix), `note`.
+
+            If this is not a PR review (issue, discussion, inline comment), skip memory entirely.
+
+            BEFORE reviewing a PR:
+
+            1. Resolve identity: `gh repo view --json nameWithOwner -q .nameWithOwner` and `gh pr view --json number,headRefOid`.
+            2. Fetch prior memory (newest first):
+               - `curl --globoff -sS "$POUCH_URL/collections/reviews/content?repo=<repo>&pr=<n>" -H "Authorization: Bearer $POUCH_API_KEY"`
+               - `curl --globoff -sS "$POUCH_URL/collections/findings/content?repo=<repo>&pr=<n>&state[in]=open,wontfix" -H "Authorization: Bearer $POUCH_API_KEY"`
+            3. Use it: do not re-raise findings that are already `open` or were marked `wontfix` unless the code regressed. On follow-up reviews, focus on commits after the previous review's `sha` and check whether previously open findings were fixed.
+
+            AFTER composing your review (memory writes are the last thing you do, before your final output):
+
+            1. Save the review: `curl -sS -X POST "$POUCH_URL/collections/reviews/content" -H "Authorization: Bearer $POUCH_API_KEY" -H "Content-Type: application/json" -d '{"data":{...},"status":"published"}'` — keep the returned `id`.
+            2. Save findings in one batch (1-100 items): `POST $POUCH_URL/collections/findings/content/batch` with `{"items":[{"data":{...,"reviewId":"<id>","state":"open"},"status":"published"}]}`. Include Suggestions as `nit` findings.
+            3. Close what this PR fixes: `PATCH $POUCH_URL/collections/findings/content/<id>` with `{"data":{"state":"addressed","note":"fixed in <sha>"}}`. If a human dismissed a point in the PR discussion, mark it `wontfix` with their reason in `note`.
+
+            Memory is best-effort: if any pouch call fails, move on and never fail the review over it.
