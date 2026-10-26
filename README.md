@@ -72,11 +72,20 @@ jobs:
       - uses: butttons/pi-action-runner@main
         with:
           pi_auth: ${{ secrets.PI_AUTH }}
-          # api_key: ${{ secrets.ANTHROPIC_KEY }}
-          # pi_model: 'anthropic/claude-sonnet-4'
+          # api_key: ${{ secrets.OPENCODE_API_KEY }}
+          # pi_model: 'opencode-go/muse-spark-1.3-contributor'
 ```
 
 ## Usage
+
+### Reliability
+
+Every trigger ends with a visible comment — no more silent runs:
+
+- The agent run is retried up to 3 times on transient failures or empty responses.
+- Any `@pi` mention on a PR that isn't a review request is answered in PR context (previously these were silently skipped).
+- If the run still fails, an error comment is posted with the failure reason instead of nothing.
+- Comment `@pi retry` on any thread to re-run the last task.
 
 ### PR review
 
@@ -134,7 +143,7 @@ Thinking about moving all rendering to the edge.
 |---|---|---|
 | `api_key` | -- | API key for the model provider. Preferred over `pi_auth`. |
 | `pi_auth` | -- | Base64-encoded pi `auth.json`. Fallback when `api_key` is not set. |
-| `pi_model` | `opencode-go/kimi-k2.5` | Model in `provider/model-id` format. |
+| `pi_model` | `opencode-go/muse-spark-1.3-contributor` | Model in `provider/model-id` format. |
 | `use_dora` | `true` | Enable dora code intelligence. |
 | `dora_version` | `latest` | Dora CLI version tag. |
 | `scip_install` | `bun install -g @sourcegraph/scip-typescript` | SCIP indexer install command. Set to empty string to skip. |

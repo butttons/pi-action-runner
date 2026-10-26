@@ -56,3 +56,13 @@ export type DiscussionConfig = BaseConfig & {
   commentNodeId: string | null;
   message: string;
 };
+
+export type PrQuestionConfig = BaseConfig & {
+  prNumber: number;
+  baseBranch: string;
+  headBranch: string;
+  prTitle: string;
+  prBody: string;
+  commentBody: string;
+  message: string;
+};
