@@ -48,7 +48,12 @@ function extractToolResultText({ result }: { result: unknown }): string {
   return JSON.stringify(result);
 }
 
-function extractFinalResponse({ messages }: { messages: readonly unknown[] }): string {
+function extractFinalResponse({ session }: { session: { getLastAssistantText: () => string | undefined; messages: unknown } }): string {
+  const last = session.getLastAssistantText();
+  if (last && last.trim()) return last;
+
+  // Fallback: scan raw messages for the last assistant text block
+  const messages = session.messages as readonly unknown[];
   for (let i = messages.length - 1; i >= 0; i--) {
     const msg = messages[i] as { role?: string; content?: unknown[] } | undefined;
     if (!msg || msg.role !== 'assistant' || !Array.isArray(msg.content)) continue;
@@ -57,7 +62,7 @@ function extractFinalResponse({ messages }: { messages: readonly unknown[] }): s
       .filter((c) => c.type === 'text' && typeof c.text === 'string')
       .map((c) => c.text as string);
 
-    if (textParts.length > 0) return textParts.join('\n');
+    if (textParts.length > 0 && textParts.join('\n').trim()) return textParts.join('\n');
   }
 
   core.warning('No assistant text found in session messages');
@@ -214,12 +219,34 @@ export async function runAgent({
     }
   });
 
-  core.startGroup('Running pi agent');
-  await session.prompt(userPrompt);
-  core.endGroup();
+  // Durable run: retry transient failures / empty responses so the action
+  // almost never ends with nothing to post.
+  const maxAttempts = 3;
+  let lastError: unknown = null;
+  let finalResponse = '';
 
-  const finalResponse = extractFinalResponse({ messages: session.messages as unknown[] });
-  session.dispose();
+  try {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        core.startGroup(`Running pi agent (attempt ${attempt}/${maxAttempts})`);
+        await session.prompt(userPrompt);
+        core.endGroup();
 
-  return finalResponse;
+        finalResponse = extractFinalResponse({ session });
+        if (finalResponse.trim()) return finalResponse;
+
+        core.warning(`Attempt ${attempt}: agent returned empty response`);
+        lastError = new Error('Agent returned an empty response');
+      } catch (error) {
+        core.endGroup();
+        const message = error instanceof Error ? error.message : String(error);
+        core.warning(`Attempt ${attempt} failed: ${message}`);
+        lastError = error;
+      }
+    }
+  } finally {
+    session.dispose();
+  }
+
+  throw lastError instanceof Error ? lastError : new Error(String(lastError ?? 'Agent failed'));
 }

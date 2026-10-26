@@ -14,7 +14,7 @@ inputs:
   pi_model:
     description: 'Model to use (provider/model format)'
     required: false
-    default: 'opencode-go/kimi-k2.5'
+    default: 'opencode-go/muse-spark-1.3-contributor'
   use_dora:
     description: 'Enable dora code intelligence (install, index, and use dora commands in review)'
     required: false

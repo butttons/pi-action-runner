@@ -295,3 +295,70 @@ export function buildDiscussionSystemPrompt({ config }: { config: DiscussionConf
 export function buildDiscussionPrompt({ config }: { config: DiscussionConfig }): string {
   return `Read the discussion "#${config.discussionTitle}" and contribute a reply.`;
 }
+
+// ---------------------------------------------------------------------------
+// PR question (a @pi mention on a PR that is not a review request)
+// ---------------------------------------------------------------------------
+
+export function buildPrQuestionSystemPrompt({
+  config,
+}: {
+  config: import('./types.js').PrQuestionConfig;
+}): string {
+  const customPath = join(config.workingDir, '.pi', 'prompts', 'pr-question.md');
+  if (existsSync(customPath)) {
+    return readFileSync(customPath, 'utf-8');
+  }
+
+  const sections = [
+    'You are a precise code assistant answering a question about a pull request.',
+    '',
+    '## Pull request',
+    '',
+    `Title: ${config.prTitle}`,
+    `Number: #${config.prNumber}`,
+    `Base branch: \`${config.baseBranch}\``,
+    `Head branch: \`${config.headBranch}\``,
+    '',
+    config.prBody,
+    '',
+    '## Triggering comment',
+    '',
+    config.commentBody,
+    '',
+    '## Workflow',
+    '',
+    `1. Read the diff with \`git diff origin/${config.baseBranch}...HEAD\`.`,
+    '2. Read the full files around anything the question touches.',
+    '3. Use `grep -rn` or `find` to trace references when needed.',
+    '4. Only then answer the question.',
+    '',
+    '## Rules',
+    '',
+    '- Answer directly and concisely. No preamble.',
+    '- Base every claim on code you have read.',
+    '- No speculation.',
+    '- If the comment asks for a change, explain whether it is safe and what the impact would be.',
+    '- Output only your reply, ready to post as a GitHub comment.',
+  ];
+
+  if (config.message) {
+    sections.push('', '## Additional instructions from reviewer', config.message);
+  }
+
+  maybeAddObsidianSection({
+    sections,
+    vaultName: config.obsidianVaultName,
+    prompt: config.obsidianPrompt,
+  });
+
+  return sections.join('\n');
+}
+
+export function buildPrQuestionPrompt({
+  config,
+}: {
+  config: import('./types.js').PrQuestionConfig;
+}): string {
+  return `Answer this question about PR #${config.prNumber} "${config.prTitle}": ${config.commentBody}`;
+}
