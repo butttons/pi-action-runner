@@ -19,6 +19,10 @@ inputs:
     description: 'Enable dora code intelligence (install, index, and use dora commands in review)'
     required: false
     default: 'true'
+  use_github_cache:
+    description: 'Use GitHub Actions cache (disable on self-hosted runners with persistent disks; also saves are denied on read-only triggers like issue_comment)'
+    required: false
+    default: 'true'
   dora_version:
     description: 'Dora CLI version (latest or specific tag)'
     required: false
@@ -123,13 +127,12 @@ runs:
       run: echo "hash=$(sha256sum ${{ github.action_path }}/bun.lock | cut -d' ' -f1)" >> $GITHUB_OUTPUT
 
     - name: Restore action node_modules cache
-      if: env.RUNNER_ENVIRONMENT != 'self-hosted'
+      if: inputs.use_github_cache == 'true'
       id: cache-action-deps
       uses: actions/cache@v6.1.0
       with:
         path: ${{ github.action_path }}/node_modules
         key: pi-action-deps-${{ runner.os }}-${{ steps.action-lockfile-hash.outputs.hash }}
-        save-always: true
 
     - name: Install action dependencies
       if: steps.cache-action-deps.outputs.cache-hit != 'true'
@@ -139,13 +142,12 @@ runs:
         bun install --frozen-lockfile
 
     - name: Restore dora + scip cache
-      if: inputs.use_dora == 'true' && env.RUNNER_ENVIRONMENT != 'self-hosted'
+      if: inputs.use_dora == 'true' && inputs.use_github_cache == 'true'
       id: cache-dora
       uses: actions/cache@v6.1.0
       with:
         path: ~/.bun
         key: pi-dora-${{ runner.os }}-${{ inputs.dora_version }}-${{ inputs.scip_install }}
-        save-always: true
 
     - name: Install dora
       if: inputs.use_dora == 'true' && steps.cache-dora.outputs.cache-hit != 'true'
@@ -181,22 +183,20 @@ runs:
       run: dora init
 
     - name: Restore dora index cache
-      if: inputs.use_dora == 'true' && env.RUNNER_ENVIRONMENT != 'self-hosted'
+      if: inputs.use_dora == 'true' && inputs.use_github_cache == 'true'
       id: cache-dora-index
       uses: actions/cache@v6.1.0
       with:
         path: .dora
         key: pi-dora-index-${{ runner.os }}-${{ github.sha }}
-        save-always: true
 
     - name: Restore project node_modules cache
-      if: inputs.use_dora == 'true' && inputs.project_lockfile != '' && steps.cache-dora-index.outputs.cache-hit != 'true' && env.RUNNER_ENVIRONMENT != 'self-hosted'
+      if: inputs.use_dora == 'true' && inputs.project_lockfile != '' && steps.cache-dora-index.outputs.cache-hit != 'true' && inputs.use_github_cache == 'true'
       id: cache-project-deps
       uses: actions/cache@v6.1.0
       with:
         path: node_modules
         key: pi-project-deps-${{ runner.os }}-${{ hashFiles(inputs.project_lockfile) }}
-        save-always: true
 
     - name: Pre-index setup
       if: inputs.use_dora == 'true' && inputs.dora_pre_index != '' && steps.cache-dora-index.outputs.cache-hit != 'true' && steps.cache-project-deps.outputs.cache-hit != 'true'
@@ -239,13 +239,12 @@ runs:
         echo "Home: $HOME"
 
     - name: Restore vault cache
-      if: inputs.obsidian_vault_repo != '' && env.RUNNER_ENVIRONMENT != 'self-hosted'
+      if: inputs.obsidian_vault_repo != '' && inputs.use_github_cache == 'true'
       id: cache-vault
       uses: actions/cache@v6.1.0
       with:
         path: ${{ steps.vault-name.outputs.home }}/obi-vaults/${{ steps.vault-name.outputs.name }}
         key: pi-vault-${{ runner.os }}-${{ inputs.obsidian_vault_repo }}-${{ steps.vault-sha.outputs.sha }}
-        save-always: true
 
     - name: Clone Obsidian vault
       if: inputs.obsidian_vault_repo != '' && steps.cache-vault.outputs.cache-hit != 'true'
