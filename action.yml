@@ -98,7 +98,7 @@ runs:
 
     - name: Restore action node_modules cache
       id: cache-action-deps
-      uses: actions/cache@v4
+      uses: actions/cache@v6.1.0
       with:
         path: ${{ github.action_path }}/node_modules
         key: pi-action-deps-${{ runner.os }}-${{ steps.action-lockfile-hash.outputs.hash }}
@@ -113,7 +113,7 @@ runs:
     - name: Restore dora + scip cache
       if: inputs.use_dora == 'true'
       id: cache-dora
-      uses: actions/cache@v4
+      uses: actions/cache@v6.1.0
       with:
         path: ~/.bun
         key: pi-dora-${{ runner.os }}-${{ inputs.dora_version }}-${{ inputs.scip_install }}
@@ -154,7 +154,7 @@ runs:
     - name: Restore dora index cache
       if: inputs.use_dora == 'true'
       id: cache-dora-index
-      uses: actions/cache@v4
+      uses: actions/cache@v6.1.0
       with:
         path: .dora
         key: pi-dora-index-${{ runner.os }}-${{ github.sha }}
@@ -162,7 +162,7 @@ runs:
     - name: Restore project node_modules cache
       if: inputs.use_dora == 'true' && inputs.project_lockfile != '' && steps.cache-dora-index.outputs.cache-hit != 'true'
       id: cache-project-deps
-      uses: actions/cache@v4
+      uses: actions/cache@v6.1.0
       with:
         path: node_modules
         key: pi-project-deps-${{ runner.os }}-${{ hashFiles(inputs.project_lockfile) }}
@@ -210,7 +210,7 @@ runs:
     - name: Restore vault cache
       if: inputs.obsidian_vault_repo != ''
       id: cache-vault
-      uses: actions/cache@v4
+      uses: actions/cache@v6.1.0
       with:
         path: ${{ steps.vault-name.outputs.home }}/obi-vaults/${{ steps.vault-name.outputs.name }}
         key: pi-vault-${{ runner.os }}-${{ inputs.obsidian_vault_repo }}-${{ steps.vault-sha.outputs.sha }}
