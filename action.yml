@@ -75,6 +75,32 @@ inputs:
 runs:
   using: 'composite'
   steps:
+    - name: Ensure gh CLI
+      shell: bash
+      run: |
+        if command -v gh >/dev/null 2>&1; then
+          echo "gh already installed: $(gh --version | head -1)"
+          exit 0
+        fi
+        GH_VERSION="2.103.2"
+        case "$(uname -s)" in
+          Linux) PLATFORM="linux" ; EXT="tar.gz" ;;
+          Darwin) PLATFORM="macOS" ; EXT="zip" ;;
+          *) echo "Unsupported OS for gh auto-install: $(uname -s)" >&2; exit 1 ;;
+        esac
+        case "$(uname -m)" in
+          x86_64) GH_ARCH="amd64" ;;
+          arm64|aarch64) GH_ARCH="arm64" ;;
+          *) echo "Unsupported arch for gh auto-install: $(uname -m)" >&2; exit 1 ;;
+        esac
+        DEST="$RUNNER_TOOL_CACHE/gh/${GH_VERSION}"
+        mkdir -p "$DEST"
+        curl -sSL -o "/tmp/gh-pkg.${EXT}" "https://github.com/cli/cli/releases/download/v${GH_VERSION}/gh_${GH_VERSION}_${PLATFORM}_${GH_ARCH}.${EXT}"
+        if [ "$EXT" = "zip" ]; then unzip -q -o "/tmp/gh-pkg.zip" -d "$DEST"; else tar -xzf /tmp/gh-pkg.tar.gz -C "$DEST"; fi
+        echo "$DEST/gh_${GH_VERSION}_${PLATFORM}_${GH_ARCH}/bin" >> "$GITHUB_PATH"
+        rm -f "/tmp/gh-pkg.${EXT}"
+        echo "gh installed to $DEST/gh_${GH_VERSION}_${PLATFORM}_${GH_ARCH}/bin"
+
     - name: React to trigger
       if: github.event_name == 'issue_comment' && github.event.issue.pull_request
       shell: bash
