@@ -128,6 +128,7 @@ runs:
       with:
         path: ${{ github.action_path }}/node_modules
         key: pi-action-deps-${{ runner.os }}-${{ steps.action-lockfile-hash.outputs.hash }}
+        save-always: true
 
     - name: Install action dependencies
       if: steps.cache-action-deps.outputs.cache-hit != 'true'
@@ -143,6 +144,7 @@ runs:
       with:
         path: ~/.bun
         key: pi-dora-${{ runner.os }}-${{ inputs.dora_version }}-${{ inputs.scip_install }}
+        save-always: true
 
     - name: Install dora
       if: inputs.use_dora == 'true' && steps.cache-dora.outputs.cache-hit != 'true'
@@ -184,6 +186,7 @@ runs:
       with:
         path: .dora
         key: pi-dora-index-${{ runner.os }}-${{ github.sha }}
+        save-always: true
 
     - name: Restore project node_modules cache
       if: inputs.use_dora == 'true' && inputs.project_lockfile != '' && steps.cache-dora-index.outputs.cache-hit != 'true'
@@ -192,6 +195,7 @@ runs:
       with:
         path: node_modules
         key: pi-project-deps-${{ runner.os }}-${{ hashFiles(inputs.project_lockfile) }}
+        save-always: true
 
     - name: Pre-index setup
       if: inputs.use_dora == 'true' && inputs.dora_pre_index != '' && steps.cache-dora-index.outputs.cache-hit != 'true' && steps.cache-project-deps.outputs.cache-hit != 'true'
@@ -240,6 +244,7 @@ runs:
       with:
         path: ${{ steps.vault-name.outputs.home }}/obi-vaults/${{ steps.vault-name.outputs.name }}
         key: pi-vault-${{ runner.os }}-${{ inputs.obsidian_vault_repo }}-${{ steps.vault-sha.outputs.sha }}
+        save-always: true
 
     - name: Clone Obsidian vault
       if: inputs.obsidian_vault_repo != '' && steps.cache-vault.outputs.cache-hit != 'true'
