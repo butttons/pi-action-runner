@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.0.7 - 2026-10-26
+
+### Changed
+
+- Default `pi_model` is now `opencode-go/muse-spark-1.3-contributor`
+- Bumped `@earendil-works/pi-coding-agent` to `^1.4.0`
+
+### Fixed
+
+- Guaranteed comments: every trigger now ends with a visible comment — retries (up to 3x) on failure or empty response, error comment with the failure reason instead of silence
+- Non-review `@pi` mentions on PRs are answered in PR context instead of silently skipped
+- `@pi retry` re-runs the last task on any thread
+
 ## v0.0.5 - 2026-03-15
 
 ### Added
