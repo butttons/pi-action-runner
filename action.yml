@@ -250,8 +250,12 @@ runs:
         OBI_HOME: ${{ steps.vault-name.outputs.home }}
       run: |
         mkdir -p $OBI_HOME/obi-vaults
-        git clone --depth 1 "https://$VAULT_TOKEN@github.com/${{ inputs.obsidian_vault_repo }}.git" $OBI_HOME/obi-vaults/${VAULT_NAME}
-        echo "Vault cloned to: $OBI_HOME/obi-vaults/${VAULT_NAME}"
+        if [ -d "$OBI_HOME/obi-vaults/${VAULT_NAME}" ]; then
+          git -C "$OBI_HOME/obi-vaults/${VAULT_NAME}" fetch --depth 1 origin HEAD 2>/dev/null && git -C "$OBI_HOME/obi-vaults/${VAULT_NAME}" reset --hard FETCH_HEAD || echo "Reusing existing vault checkout"
+        else
+          git clone --depth 1 "https://$VAULT_TOKEN@github.com/${{ inputs.obsidian_vault_repo }}.git" $OBI_HOME/obi-vaults/${VAULT_NAME}
+        fi
+        echo "Vault ready at: $OBI_HOME/obi-vaults/${VAULT_NAME}"
 
     - name: Install obi
       if: inputs.obsidian_vault_repo != ''
