@@ -123,6 +123,7 @@ runs:
       run: echo "hash=$(sha256sum ${{ github.action_path }}/bun.lock | cut -d' ' -f1)" >> $GITHUB_OUTPUT
 
     - name: Restore action node_modules cache
+      if: env.RUNNER_ENVIRONMENT != 'self-hosted'
       id: cache-action-deps
       uses: actions/cache@v6.1.0
       with:
@@ -138,7 +139,7 @@ runs:
         bun install --frozen-lockfile
 
     - name: Restore dora + scip cache
-      if: inputs.use_dora == 'true'
+      if: inputs.use_dora == 'true' && env.RUNNER_ENVIRONMENT != 'self-hosted'
       id: cache-dora
       uses: actions/cache@v6.1.0
       with:
@@ -180,7 +181,7 @@ runs:
       run: dora init
 
     - name: Restore dora index cache
-      if: inputs.use_dora == 'true'
+      if: inputs.use_dora == 'true' && env.RUNNER_ENVIRONMENT != 'self-hosted'
       id: cache-dora-index
       uses: actions/cache@v6.1.0
       with:
@@ -189,7 +190,7 @@ runs:
         save-always: true
 
     - name: Restore project node_modules cache
-      if: inputs.use_dora == 'true' && inputs.project_lockfile != '' && steps.cache-dora-index.outputs.cache-hit != 'true'
+      if: inputs.use_dora == 'true' && inputs.project_lockfile != '' && steps.cache-dora-index.outputs.cache-hit != 'true' && env.RUNNER_ENVIRONMENT != 'self-hosted'
       id: cache-project-deps
       uses: actions/cache@v6.1.0
       with:
@@ -238,7 +239,7 @@ runs:
         echo "Home: $HOME"
 
     - name: Restore vault cache
-      if: inputs.obsidian_vault_repo != ''
+      if: inputs.obsidian_vault_repo != '' && env.RUNNER_ENVIRONMENT != 'self-hosted'
       id: cache-vault
       uses: actions/cache@v6.1.0
       with:
